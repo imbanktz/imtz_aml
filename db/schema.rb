@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_04_28_084749) do
+ActiveRecord::Schema.define(version: 2026_04_29_082433) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -205,6 +205,32 @@ ActiveRecord::Schema.define(version: 2026_04_28_084749) do
     t.boolean "active"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+  end
+
+  create_table "transactions", force: :cascade do |t|
+    t.datetime "date"
+    t.string "request_id"
+    t.string "transaction_direction"
+    t.decimal "transaction_amount", precision: 18, scale: 2
+    t.string "transaction_currency"
+    t.date "transaction_date"
+    t.string "clearing_system_ref"
+    t.jsonb "parties", default: []
+    t.jsonb "agents", default: []
+    t.jsonb "narratives", default: {}
+    t.jsonb "forensic_data", default: {}
+    t.string "processing_type"
+    t.string "profile"
+    t.string "profile_name"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["agents"], name: "index_transactions_on_agents", using: :gin
+    t.index ["narratives"], name: "index_transactions_on_narratives", using: :gin
+    t.index ["parties"], name: "index_transactions_on_parties", using: :gin
+    t.index ["processing_type"], name: "index_transactions_on_processing_type"
+    t.index ["request_id"], name: "index_transactions_on_request_id"
+    t.index ["transaction_date", "transaction_currency"], name: "index_transactions_on_transaction_date_and_transaction_currency"
+    t.index ["transaction_direction"], name: "index_transactions_on_transaction_direction"
   end
 
   create_table "users", force: :cascade do |t|
