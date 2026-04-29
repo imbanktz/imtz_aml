@@ -1,9 +1,18 @@
+
 Rails.application.routes.draw do
   devise_for :users, ActiveAdmin::Devise.config.merge(skip: [:confirmations, :registrations, :unlocks])
-  # devise_for :users, skip: [:registrations]
   ActiveAdmin.routes(self)
   # Health check endpoint (for Docker/Kubernetes)
   get "/health", to: proc { [200, {}, ["OK"]] } # Simple health check
   root to: "admin/dashboard#index"
-  
+
+  match 'api/v1/transaction_screening', to: 'api/v1/transaction_screening#txn_screen', via: 'post'
+  # match 'api/v1/customer_screening', to: 'api/v1/customer_screening#txn_screen', via: 'post'
+
+  namespace :api do
+    namespace :v1 do
+      resources :transaction_screening
+      # resources :customer_screening
+    end
+  end
 end 
