@@ -1,0 +1,2 @@
+class Lubricant < ApplicationRecord
+end

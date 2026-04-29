@@ -1,0 +1,25 @@
+# config/sidekiq.yml
+---
+:concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 5) %>
+:timeout: 25
+:queues:
+  - critical
+  - default
+  - mailers
+  - low
+
+development:
+  :concurrency: 5
+
+production:
+  :concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 10) %>
+
+:schedule:
+  generate_pm_work_orders:
+    cron: "0 2 * * *"  # 2 AM daily
+    class: "GeneratePmWorkOrdersJob"
+    queue: critical
+  send_maintenance_reminders:
+    cron: "0 8 * * *"  # 8 AM daily
+    class: "SendMaintenanceRemindersJob"
+    queue: default

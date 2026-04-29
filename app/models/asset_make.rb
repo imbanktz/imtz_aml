@@ -1,0 +1,2 @@
+class AssetMake < ApplicationRecord
+end

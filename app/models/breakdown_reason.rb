@@ -1,0 +1,2 @@
+class BreakdownReason < ApplicationRecord
+end

@@ -1,0 +1,30 @@
+<%# app/views/admin/assets/import.html.erb %>
+<div class="panel">
+  <h3>Import Assets from Excel</h3>
+  
+  <%= form_tag process_import_admin_assets_path, multipart: true do %>
+    <div class="form-group">
+      <%= label_tag :excel_file, "Excel File (.xlsx)" %>
+      <%= file_field_tag :excel_file, accept: '.xlsx', class: 'form-control', required: true %>
+    </div>
+    
+    <div class="form-group">
+      <%= label_tag :sheet_name, "Sheet Name" %>
+      <%= select_tag :sheet_name, options_for_select(['AVAILABILITY-NOV 25', 'PV494', 'PV492', 'PV491', 'PV486']), class: 'form-control' %>
+    </div>
+    
+    <div class="form-actions">
+      <%= submit_tag "Import Data", class: 'button' %>
+    </div>
+  <% end %>
+  
+  <hr>
+  
+  <h4>Instructions</h4>
+  <ul>
+    <li>Excel file should match the format from your existing reports</li>
+    <li>For assets: include fleet number, make, model, downtime hours</li>
+    <li>For spare parts: include part number, name, quantity</li>
+    <li>For lubricants: include date, plant number, lubricant type, quantity</li>
+  </ul>
+</div>

@@ -1,0 +1,8 @@
+/* app/assets/stylesheets/app.css */
+
+/* Add your custom styles here */
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}

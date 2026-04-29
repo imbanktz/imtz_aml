@@ -1,0 +1,12 @@
+
+en:
+  active_admin:
+      powered_by: "Powered by: ZNAK14, All Rights Reserved, v 0xABD1DEA2025"
+      resources:
+        loan_application: # Registered resource
+          new_model: '' # new action item
+          edit_model: 'Change Application' # edit action item
+          delete_model: 'Cancel Loan Application' # delete action item
+        search: # Registered resource
+          show_model: 'Score Customer'
+          view_model: 'Score Customer'

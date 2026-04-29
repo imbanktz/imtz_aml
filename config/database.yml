@@ -1,0 +1,21 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: imtz_aml_development
+
+test:
+  <<: *default
+  database: imtz_aml_test
+
+production:
+  primary: &primary_production
+    <<: *default
+    database: imtz_aml_db_prod
+    username: imtz_aml_user
+    password: _6xmuna7@2025
+    host: imtz_aml-db
+    port: 5432

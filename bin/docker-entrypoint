@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# bin/docker-entrypoint - make executable with: chmod +x bin/docker-entrypoint
+
+set -e
+
+# Remove a potentially pre-existing server.pid for Rails
+rm -f /rails/tmp/pids/server.pid
+
+# Run database migrations if in production
+if [ "$RAILS_ENV" = "production" ]; then
+  echo "Running database migrations..."
+  bundle exec rails db:migrate 2>/dev/null || echo "Migrations failed or already up to date"
+fi
+
+# Then exec the container's main process (what's passed as arguments)
+exec "$@"

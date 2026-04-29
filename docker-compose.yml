@@ -1,0 +1,129 @@
+services:
+  imtz_aml-redis:
+    image: redis:7-alpine
+    container_name: imtz_aml-redis
+    ports:
+      - "8379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - fleet-network
+
+  imtz_aml-db:
+    image: postgres:15-alpine
+    container_name: imtz_aml-db
+    environment:
+      POSTGRES_DB: imtz_aml_db_prod
+      POSTGRES_USER: imtz_aml_user
+      POSTGRES_PASSWORD: _6xmuna7@2025
+    volumes:
+      - imtz_aml_postgres-data:/var/lib/postgresql/data
+    ports:
+      - "8432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imtz_aml_user -d imtz_aml_db_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - fleet-network
+
+  imtz_aml-web:
+    image: abdimuna/inmtz-ipg-railsappv1:1
+    build: .
+    container_name: imtz_aml-web
+    command: >
+      sh -c "
+        rm -f /imtz_aml_auto/tmp/pids/server.pid &&
+        mkdir -p /imtz_aml_auto/tmp/pids &&
+        ./wait-for-it.sh imtz_aml-db:5432 --timeout=60 --
+        ./wait-for-it.sh imtz_aml-redis:6379 --timeout=60 --
+        bundle exec rails server -b 0.0.0.0 -p 3000
+      "
+    volumes:
+      # IMPORTANT: Add this line to sync your host code with the container
+      - .:/imtz_aml_auto
+      # Keep these for persistence
+      - shared-logs:/imtz_aml_auto/log
+      # - bundle-data:/usr/local/bundle
+    ports:
+      - "8080:3000"
+    environment:
+      DATABASE_HOST: imtz_aml-db
+      DATABASE_USERNAME: imtz_aml_user
+      DATABASE_PASSWORD: _6xmuna7@2025
+      DATABASE_NAME: imtz_aml_db_prod
+      REDIS_URL: redis://imtz_aml-redis:6379/0
+      REDIS_CACHE_URL: redis://imtz_aml-redis:6379/1
+      RAILS_ENV: production
+      RAILS_SERVE_STATIC_FILES: "true"
+      RAILS_LOG_TO_STDOUT: "true"
+      RAILS_MAX_THREADS: "5"
+      SECRET_KEY_BASE: 972c3c2324317af4c3828e78fd78a0d7fd06ab150d8ba2d8e62de1d830fda1f6bc90e3b9b7268559415d01337f2397fababd71d7c65d9fa77b56d99ae8bcb6ff
+    depends_on:
+      imtz_aml-db:
+        condition: service_healthy
+      imtz_aml-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - fleet-network
+
+  imtz_aml-sidekiq:
+    image: abdimuna/inmtz-ipg-railsappv1:1
+    build: .
+    container_name: imtz_aml-sidekiq
+    command: >
+      sh -c "
+        ./wait-for-it.sh imtz_aml-db:5432 --timeout=60 --
+        ./wait-for-it.sh imtz_aml-redis:6379 --timeout=60 --
+        bundle exec sidekiq -C config/sidekiq.yml -e production
+      "
+    volumes:
+      - .:/imtz_aml_auto
+      - shared-logs:/imtz_aml_auto/log
+      - bundle-data:/usr/local/bundle
+    environment:
+      DATABASE_HOST: imtz_aml-db
+      DATABASE_USERNAME: imtz_aml_user
+      DATABASE_PASSWORD: _6xmuna7@2025
+      DATABASE_NAME: imtz_aml_db_prod
+      REDIS_URL: redis://imtz_aml-redis:6379/0
+      REDIS_CACHE_URL: redis://imtz_aml-redis:6379/1
+      RAILS_ENV: production
+      RAILS_LOG_TO_STDOUT: "true"
+      SECRET_KEY_BASE: 972c3c2324317af4c3828e78fd78a0d7fd06ab150d8ba2d8e62de1d830fda1f6bc90e3b9b7268559415d01337f2397fababd71d7c65d9fa77b56d99ae8bcb6ff
+    depends_on:
+      imtz_aml-db:
+        condition: service_healthy
+      imtz_aml-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - fleet-network
+
+networks:
+  fleet-network:
+    driver: bridge
+
+volumes:
+  imtz_aml_postgres-data: 
+  redis-data:
+  bundle-data:
+  shared-logs:
