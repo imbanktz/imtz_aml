@@ -1,8 +1,36 @@
+# coding: utf-8
+#
+#
+# Copyright (c) 2025
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# @package  iPG
+# @author abdimuna, abdillah.muna@imbank.co.tz | abdimuna1@gmail.com
+# @Company  I&M Bank (T)
+# @description  Transaction screening
+# @license  private
+# @version  0.0.1:
+# @usage  Use ruby convention, when handling this code
+##/
+
+
 class Api::V1::TransactionScreeningController < ApplicationController
+
   
   include HTTParty
   base_uri THETARAY_BASE_URL
-  default_timeout 90 #seconds 
+  default_timeout 90 #seconds
+  skip_before_action :verify_authenticity_token
 
   # POST /transaction_screening/:id
   def txn_screen
