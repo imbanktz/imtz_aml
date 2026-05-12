@@ -70,15 +70,26 @@ class Api::V1::TransactionScreeningController < ApplicationController
   end
 
   # 🚀 SEND REQUEST
+
   def send_screening_request(transaction, token)
-    self.class.post(
+    payload = build_payload(transaction)
+    
+    # Log the outgoing request
+    log_outgoing_request(transaction, payload)
+    
+    response = self.class.post(
       API_TRANSACTION_SCREENING,
       headers: {
         'Content-Type' => 'application/json',
         'Authorization' => "Bearer #{token}"
       },
-      body: build_payload(transaction).to_json
+      body: payload.to_json
     )
+    
+    # Log the response
+    log_response(response)
+    
+    response
   end
 
   # 🧱 BUILD PAYLOAD FROM YOUR MODEL
@@ -92,6 +103,7 @@ class Api::V1::TransactionScreeningController < ApplicationController
       parties: format_parties(transaction.parties)
     }
   end
+
 
   def format_parties(parties)
     parties.map do |p|
@@ -141,6 +153,75 @@ class Api::V1::TransactionScreeningController < ApplicationController
   def high_risk?(matches)
     return false if matches.blank?
     matches.any? { |m| m['score'].to_f >= 0.95 }
+  end
+
+  private
+
+  def log_outgoing_request(transaction, payload)
+    Rails.logger.info("=" * 80)
+    Rails.logger.info("📤 OUTGOING SCREENING REQUEST")
+    Rails.logger.info("=" * 80)
+    Rails.logger.info("🔹 Transaction ID: #{transaction.id}")
+    Rails.logger.info("🔹 Request ID: #{transaction.request_id}")
+    Rails.logger.info("🔹 Endpoint: #{API_TRANSACTION_SCREENING}")
+    Rails.logger.info("🔹 Headers: Content-Type: application/json")
+    Rails.logger.info("🔹 Payload:")
+    Rails.logger.info(JSON.pretty_generate(payload))
+    Rails.logger.info("=" * 80)
+    
+    # Also output to console in development
+    if Rails.env.development?
+      puts "=" * 80
+      puts "📤 OUTGOING SCREENING REQUEST"
+      puts "=" * 80
+      puts "Transaction ID: #{transaction.id}"
+      puts "Request ID: #{transaction.request_id}"
+      puts "Endpoint: #{API_TRANSACTION_SCREENING}"
+      puts "Payload:"
+      puts JSON.pretty_generate(payload)
+      puts "=" * 80
+    end
+  end
+
+  def log_response(response)
+    Rails.logger.info("=" * 80)
+    Rails.logger.info("📥 SCREENING RESPONSE")
+    Rails.logger.info("=" * 80)
+    Rails.logger.info("🔹 Status Code: #{response.code}")
+    Rails.logger.info("🔹 Response Body:")
+    
+    begin
+      # Pretty print JSON response if possible
+      if response.body.present?
+        parsed_body = JSON.parse(response.body)
+        Rails.logger.info(JSON.pretty_generate(parsed_body))
+      else
+        Rails.logger.info("(empty response)")
+      end
+    rescue JSON::ParserError
+      Rails.logger.info(response.body)
+    end
+    
+    Rails.logger.info("=" * 80)
+    
+    if Rails.env.development?
+      puts "=" * 80
+      puts "📥 SCREENING RESPONSE"
+      puts "=" * 80
+      puts "Status Code: #{response.code}"
+      puts "Response Body:"
+      begin
+        if response.body.present?
+          parsed_body = JSON.parse(response.body)
+          puts JSON.pretty_generate(parsed_body)
+        else
+          puts "(empty response)"
+        end
+      rescue JSON::ParserError
+        puts response.body
+      end
+      puts "=" * 80
+    end
   end
   
 end
