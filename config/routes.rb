@@ -7,7 +7,7 @@ Rails.application.routes.draw do
   root to: "admin/dashboard#index"
 
   match 'api/v1/transaction_screening', to: 'api/v1/transaction_screening#txn_screen', via: 'post'
-  # match 'api/v1/customer_screening', to: 'api/v1/customer_screening#txn_screen', via: 'post'
+  match 'api/v1/tz_callback', to: 'api/v1/transaction_screening#tz_callback', via: 'post'
 
   namespace :api do
     namespace :v1 do

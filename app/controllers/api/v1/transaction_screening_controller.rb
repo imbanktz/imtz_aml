@@ -32,6 +32,14 @@ class Api::V1::TransactionScreeningController < ApplicationController
   default_timeout 90 #seconds
   skip_before_action :verify_authenticity_token
 
+  def tz_callback
+    Rails.logger.info("Received request payload: #{params}")
+    render json: {
+             status: ok,
+             message: "Request received succefully"
+           }
+  end 
+
   # POST /transaction_screening/:id
   def txn_screen
     transaction = Transaction.find(params[:id])
