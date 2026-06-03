@@ -35,7 +35,7 @@ class Api::V1::TransactionScreeningController < ApplicationController
   def tz_callback
     Rails.logger.info("Received request payload: #{params}")
     render json: {
-             status: ok,
+             status: :ok,
              message: "Request received succefully"
            }
   end 
