@@ -1,158 +1,134 @@
 ActiveAdmin.register Transaction do
-  permit_params :date, :request_id, :transaction_direction, :transaction_amount,
-                :transaction_currency, :transaction_date, :clearing_system_ref,
-                :parties, :agents, :narratives, :forensic_data, :processing_type,
-                :profile, :profile_name
+  permit_params :request_id, :transaction_direction, :transaction_type,
+                :transaction_amount, :transaction_currency, :transaction_date,
+                :reference, :narrative, :bank_code, :status, :screening_status,
+                :parties, :raw_data, :raw_fields, :raw_message
 
-  # Index page
   index do
     selectable_column
     id_column
-    column :date
     column :request_id
     column :transaction_direction
+    column :transaction_type
     column :transaction_amount
     column :transaction_currency
     column :transaction_date
-    column :clearing_system_ref
-    column :processing_type
-    column :profile
+    column :reference
+    column :status
+    column :screening_status
+    column :created_at
     actions
   end
 
-  # Filters
   filter :request_id
-  filter :transaction_direction, as: :select, collection: ['IN', 'OUT']
-  filter :transaction_amount
-  filter :transaction_currency, as: :select, collection: -> { Transaction.pluck(:transaction_currency).uniq }
+  filter :transaction_direction, as: :select, collection: Transaction.transaction_directions.keys.map { |dir| [dir.humanize, dir] }
+  filter :transaction_type, as: :select, collection: Transaction.transaction_types.keys.map { |type| [type.humanize, type] }
+  filter :transaction_currency
   filter :transaction_date
-  filter :clearing_system_ref
-  filter :processing_type, as: :select, collection: -> { Transaction.pluck(:processing_type).uniq }
-  filter :profile
+  filter :reference
+  filter :status, as: :select, collection: Transaction.statuses.keys.map { |status| [status.humanize, status] }
+  filter :screening_status, as: :select, collection: Transaction.screening_statuses.keys.map { |status| [status.humanize, status] }
   filter :created_at
-  filter :updated_at
 
-  # Show page
   show do
     attributes_table do
       row :id
-      row :date
       row :request_id
       row :transaction_direction
+      row :transaction_type
       row :transaction_amount
       row :transaction_currency
       row :transaction_date
-      row :clearing_system_ref
-      row :processing_type
-      row :profile
-      row :profile_name
+      row :reference
+      row :narrative
+      row :bank_code
+      row :status
+      row :screening_status
+      row :screening_result
+      row :screening_error
+      row :screened_at
+      row :error_message
+      row :processed_at
       row :created_at
       row :updated_at
-      
-      # Custom rows for JSON data
-      row :parties do |transaction|
-        if transaction.parties.present?
-          panel "Parties" do
-            table_for transaction.parties do
-              column "Party ID", :partyId
-              column "Party Type", :partyType
-              column "Full Name", :fullName
-              column "Nationalities", :nationalities
-              column "Address", :addressLine
-            end
+    end
+    
+    panel "Parties" do
+      if transaction.parties.present?
+        table_for transaction.parties do
+          column "Party Type" do |party|
+            party["partyType"]
+          end
+          column "Party ID" do |party|
+            party["partyId"]
+          end
+          column "Full Name" do |party|
+            party["fullName"]
+          end
+          column "Nationalities" do |party|
+            party["nationalities"]&.join(', ')
+          end
+          column "Address" do |party|
+            party["addressLine"]
           end
         end
+      else
+        div "No parties found"
       end
-      
-      row :agents do |transaction|
-        if transaction.agents.present?
-          panel "Agents" do
-            table_for transaction.agents do
-              column "Agent ID", :agentId
-              column "Agent Type", :agentType
-              column "BIC", :bic
-            end
-          end
-        end
-      end
-      
-      row :narratives do |transaction|
-        if transaction.narratives.present?
-          panel "Narratives" do
-            attributes_table_for transaction.narratives do
-              row :remittanceInfo
-              row :all
-            end
-          end
-        end
+    end
+    
+    panel "Raw Data" do
+      pre do
+        JSON.pretty_generate(transaction.raw_data) if transaction.raw_data.present?
       end
     end
   end
 
-  # Form
   form do |f|
-    f.inputs "Transaction Details" do
-      f.input :date, as: :datetime_picker
+    f.inputs 'Transaction Details' do
       f.input :request_id
-      f.input :transaction_direction, as: :select, collection: ['IN', 'OUT']
+      f.input :transaction_direction, as: :select, collection: Transaction.transaction_directions.keys.map { |dir| [dir.humanize, dir] }
+      f.input :transaction_type, as: :select, collection: Transaction.transaction_types.keys.map { |type| [type.humanize, type] }
       f.input :transaction_amount
       f.input :transaction_currency
       f.input :transaction_date, as: :datepicker
-      f.input :clearing_system_ref
-      f.input :processing_type
-      f.input :profile
-      f.input :profile_name
-    end
-    
-    f.inputs "Parties (JSON)" do
-      f.input :parties, as: :jsonb, input_html: { rows: 10 }
-    end
-    
-    f.inputs "Agents (JSON)" do
-      f.input :agents, as: :jsonb, input_html: { rows: 10 }
-    end
-    
-    f.inputs "Narratives (JSON)" do
-      f.input :narratives, as: :jsonb, input_html: { rows: 5 }
-    end
-    
-    f.inputs "Forensic Data (JSON)" do
-      f.input :forensic_data, as: :jsonb, input_html: { rows: 5 }
+      f.input :reference
+      f.input :narrative
+      f.input :bank_code
+      f.input :status, as: :select, collection: Transaction.statuses.keys.map { |status| [status.humanize, status] }
+      f.input :screening_status, as: :select, collection: Transaction.screening_statuses.keys.map { |status| [status.humanize, status] }
     end
     
     f.actions
   end
 
-  # Custom actions
-  member_action :view_json, method: :get do
-    render json: resource
+  member_action :approve, method: :post do
+    transaction = Transaction.find(params[:id])
+    if transaction.update(status: 'APPROVED')
+      redirect_to admin_transaction_path(transaction), notice: "Transaction approved!"
+    else
+      redirect_to admin_transaction_path(transaction), alert: "Failed to approve transaction"
+    end
   end
 
-  action_item :view_json, only: :show do
-    link_to "View JSON", view_json_admin_transaction_path(resource)
+  member_action :reject, method: :post do
+    transaction = Transaction.find(params[:id])
+    if transaction.update(status: 'REJECTED')
+      redirect_to admin_transaction_path(transaction), notice: "Transaction rejected!"
+    else
+      redirect_to admin_transaction_path(transaction), alert: "Failed to reject transaction"
+    end
   end
-  
-  # CSV Export customization
-  csv do
-    column :id
-    column :date
-    column :request_id
-    column :transaction_direction
-    column :transaction_amount
-    column :transaction_currency
-    column :transaction_date
-    column :clearing_system_ref
-    column :parties do |transaction|
-      transaction.parties.to_json
+
+  action_item :approve, only: :show do
+    if transaction.status == 'PENDING_SCREENING' || transaction.status == 'SCREENED'
+      link_to "Approve", approve_admin_transaction_path(transaction), method: :post, data: { confirm: "Are you sure?" }
     end
-    column :agents do |transaction|
-      transaction.agents.to_json
+  end
+
+  action_item :reject, only: :show do
+    if transaction.status == 'PENDING_SCREENING' || transaction.status == 'SCREENED'
+      link_to "Reject", reject_admin_transaction_path(transaction), method: :post, data: { confirm: "Are you sure?" }
     end
-    column :narratives do |transaction|
-      transaction.narratives.to_json
-    end
-    column :processing_type
-    column :profile
-    column :profile_name
   end
 end
