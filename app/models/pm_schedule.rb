@@ -1,2 +1,0 @@
-class PmSchedule < ApplicationRecord
-end

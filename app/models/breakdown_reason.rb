@@ -1,2 +1,0 @@
-class BreakdownReason < ApplicationRecord
-end
