@@ -74,14 +74,14 @@ class RtgsParserWithScreeningService
       transaction.update(
         status: 'SCREENED',
         screening_result: screening_result[:result],
-        screening_status: 'PASSED',
+        screening_status: 'SCREENING_PASSED',  # Updated
         screened_at: Time.current
       )
     else
       transaction.update(
         status: 'SCREENING_FAILED',
         screening_error: screening_result[:error],
-        screening_status: 'FAILED',
+        screening_status: 'SCREENING_ERROR',   # Updated
         screened_at: Time.current
       )
     end

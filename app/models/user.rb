@@ -6,11 +6,27 @@ class User < ApplicationRecord
          :trackable, 
          :validatable,
          :timeoutable,
-         :lockable  # Add lockable for security
+         :lockable
 
-  # Associations
+  # Associations - Make sure these exist
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
+  
+  # Enums
+  enum user_type: {
+         driver: 'driver',
+         operator: 'operator',
+         mechanic: 'mechanic',
+         engineer: 'engineer',
+         maintenance_planner: 'maintenance_planner',
+         storekeeper: 'storekeeper',
+         supervisor: 'supervisor',
+         imtz_aml: 'imtz_aml',
+         viewer: 'viewer',
+         screener: 'screener',
+         approver: 'approver',
+         admin: 'admin'
+       }
   
   # Validations
   validates :employee_id, presence: true, uniqueness: true

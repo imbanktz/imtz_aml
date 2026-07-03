@@ -1,17 +1,18 @@
 class Transaction < ApplicationRecord
-  # Enums
-  enum :transaction_direction, { 
-         in: 'IN', 
-         out: 'OUT' 
+  # Enums with prefixes to avoid method conflicts
+  enum transaction_direction: {
+         in: 'IN',
+         out: 'OUT'
        }
   
-  enum :transaction_type, { 
-         incoming: 'INCOMING', 
-         outgoing: 'OUTGOING', 
-         unknown: 'UNKNOWN' 
+  enum transaction_type: {
+         incoming: 'INCOMING',
+         outgoing: 'OUTGOING',
+         unknown: 'UNKNOWN'
        }
   
-  enum :status, { 
+  # Status enum with prefix
+  enum status: {
          pending: 'PENDING',
          pending_screening: 'PENDING_SCREENING',
          screening: 'SCREENING',
@@ -22,14 +23,15 @@ class Transaction < ApplicationRecord
          rejected: 'REJECTED',
          processed: 'PROCESSED',
          failed: 'FAILED'
-       }
+       }, _prefix: :status
   
-  enum :screening_status, { 
+  # Screening status enum with prefix
+  enum screening_status: {
          pending: 'PENDING',
          passed: 'PASSED',
          failed: 'FAILED',
          error: 'ERROR'
-       }
+       }, _prefix: :screening
 
   # Validations
   validates :request_id, presence: true, uniqueness: true
@@ -54,7 +56,7 @@ class Transaction < ApplicationRecord
   scope :by_reference, ->(ref) { where('reference ILIKE ?', "%#{ref}%") }
   scope :recent, ->(limit = 10) { order(created_at: :desc).limit(limit) }
   
-  # Status scopes
+  # Status scopes - updated to use string values since we're using prefix
   scope :pending_screening, -> { where(status: 'PENDING_SCREENING') }
   scope :screened, -> { where(status: 'SCREENED') }
   scope :screening_passed, -> { where(screening_status: 'PASSED') }
@@ -88,6 +90,7 @@ class Transaction < ApplicationRecord
     transaction_direction == 'OUT'
   end
   
+  # Updated methods to work with prefixed enums
   def screening_passed?
     screening_status == 'PASSED'
   end
