@@ -6,6 +6,8 @@ gem 'importmap-rails'
 gem 'httparty'
 gem 'fast_jsonapi'
 gem 'cancan'
+gem 'net-sftp', '~> 4.0'
+gem 'whenever', '~> 1.0', require: false  # For cron jobs
 gem 'prawn'
 gem 'prawn-table'
 gem 'devise'
