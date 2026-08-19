@@ -44,22 +44,22 @@ class RemoteFileService
       return []
     end
   end
-
+  
   def download_file(remote_path, local_path)
-    # Convert Pathname to string if needed
+    # Convert to string if Pathname
     local_path = local_path.to_s if local_path.is_a?(Pathname)
-    
     begin
       Net::SFTP.start(@host, @username, password: @password) do |sftp|
         puts "📥 Downloading: #{remote_path} -> #{local_path}"
+        # Use download! which returns nil on success
         sftp.download!(remote_path, local_path)
         puts "✅ Download complete"
-        true
+        return true  # Explicitly return true on success
       end
     rescue => e
       Rails.logger.error "Failed to download #{remote_path}: #{e.message}"
       puts "❌ Download failed: #{e.message}"
-      false
+      return false
     end
   end
 
