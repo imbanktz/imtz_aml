@@ -11,7 +11,7 @@ Rails.application.routes.draw do
 
   get 'api/v1/screening/test', to: 'api/v1/screening#test_screening'
   post 'api/v1/screening/rtgs', to: 'api/v1/screening#test_rtgs'
-  post 'api/v1/rtgs/process', to: 'api/v1/rtgs#process
+  post 'api/v1/rtgs/process', to: 'api/v1/rtgs#process'
  
 
   namespace :api do
