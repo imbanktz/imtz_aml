@@ -23,10 +23,10 @@ class RtgsScreeningJob < ApplicationJob
       # Update status on failure
       if transaction_id.present?
         Transaction.find(transaction_id).update(
-          screening_status: 'failed',
+          screening_status: 'FAILED',
           screening_attempts: (Transaction.find(transaction_id).screening_attempts || []) << {
             timestamp: Time.current.iso8601,
-            status: 'failed',
+            status: 'FAILED',
             error: e.message,
             job_id: job_id
           }
@@ -100,7 +100,7 @@ class RtgsScreeningJob < ApplicationJob
     
     if screening_result[:success]
       transaction.update(
-        screening_status: 'completed',
+        screening_status: 'PASSED',
         screening_result: screening_result[:result],
         screening_attempts: attempts << {
           timestamp: Time.current.iso8601,
@@ -110,10 +110,10 @@ class RtgsScreeningJob < ApplicationJob
       )
     else
       transaction.update(
-        screening_status: 'failed',
+        screening_status: 'FAILED',
         screening_attempts: attempts << {
           timestamp: Time.current.iso8601,
-          status: 'failed',
+          status: 'FAILED',
           error: screening_result[:error]
         }
       )
@@ -128,7 +128,7 @@ class RtgsScreeningJob < ApplicationJob
       Rails.logger.info("✅ Transaction #{transaction.id} screened successfully")
     # TransactionScreeningChannel.broadcast_to(transaction, screening_result)
     else
-      Rails.logger.error("❌ Transaction #{transaction.id} screening failed: #{screening_result[:error]}")
+      Rails.logger.error("❌ Transaction #{transaction.id} screening FAILED: #{screening_result[:error]}")
     end
   end
 end
