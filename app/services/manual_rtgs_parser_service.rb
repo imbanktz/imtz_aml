@@ -83,9 +83,9 @@ class ManualRtgsParserService
 
     # Determine direction
     if @content.include?(':50F:') && @content.include?(':59:')
-      @parsed_data['direction'] = 'INCOMING'
+      @parsed_data['direction'] = 'IN'
     else
-      @parsed_data['direction'] = 'UNKNOWN'
+      @parsed_data['direction'] = 'OUT'
     end
   end
 
@@ -119,7 +119,7 @@ class ManualRtgsParserService
     {
       'requestId' => "IMTZTRX#{Time.current.strftime('%Y%m%d%H%M%S')}#{SecureRandom.hex(6).upcase}",
       'reference' => @parsed_data['reference'],
-      'transactionDirection' => @parsed_data['direction'] || 'INCOMING',
+      'transactionDirection' => @parsed_data['direction'] || 'IN',
       'transactionAmount' => @parsed_data['amount'] || 0,
       'transactionCurrency' => @parsed_data['currency'] || 'TZS',
       'transactionDate' => @parsed_data['date'] || Date.current.to_s,
