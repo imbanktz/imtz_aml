@@ -15,7 +15,11 @@ class TransactionScreeningService
     parsed_data = parser.call
     
     # Log parsed data
-    Rails.logger.info("RTGS Parsed Data: #{parsed_data.to_json}")
+    puts "\n" + "=" * 80
+    puts "📋 RTGS PARSED DATA"
+    puts "=" * 80
+    puts JSON.pretty_generate(parsed_data)
+    puts "=" * 80 + "\n"
     
     send_screening_request(parsed_data)
   end
@@ -31,29 +35,15 @@ class TransactionScreeningService
     log_screening_request(payload)
     
     begin
-      response = self.class.post(
-        "#{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}",
-        headers: {
-          'Content-Type' => 'application/json',
-          'Authorization' => "Bearer #{@token}"
-        },
-        body: payload.to_json
-      )
+      # Make the request with the current token
+      response = make_request(payload)
       
       # If token expired, refresh and retry once
       if response.code == 401
         Rails.logger.warn("⚠️ Token expired, refreshing...")
-        @token = AuthService.get_access_token
-        AuthService.clear_cache # Clear cache to force refresh
+        @token = AuthService.get_cached_token(force_refresh: true)
         
-        response = self.class.post(
-          "#{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}",
-          headers: {
-            'Content-Type' => 'application/json',
-            'Authorization' => "Bearer #{@token}"
-          },
-          body: payload.to_json
-        )
+        response = make_request(payload)
       end
       
       # Log response
@@ -63,7 +53,12 @@ class TransactionScreeningService
       if transaction.present?
         process_response(response, transaction)
       else
-        { success: response.success?, status: response.code, body: response.body }
+        {
+          success: response.success?,
+          status: response.code,
+          body: response.body,
+          headers: response.headers
+        }
       end
       
     rescue StandardError => e
@@ -76,6 +71,17 @@ class TransactionScreeningService
         status: nil
       }
     end
+  end
+
+  def make_request(payload)
+    self.class.post(
+      "#{THETARAY_BASE_URL}#{SCREENING_ENDPOINT}",
+      headers: {
+        'Content-Type' => 'application/json',
+        'Authorization' => "Bearer #{@token}"
+      },
+      body: payload.to_json
+    )
   end
 
   def build_payload_from_transaction(transaction)
@@ -100,16 +106,19 @@ class TransactionScreeningService
     Rails.logger.info("=" * 80)
     Rails.logger.info("📤 SCREENING REQUEST")
     Rails.logger.info("=" * 80)
-    Rails.logger.info("URL: #{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}")
+    Rails.logger.info("URL: #{THETARAY_BASE_URL}#{SCREENING_ENDPOINT}")
+    Rails.logger.info("Token (first 20 chars): #{@token[0..20]}...")
     Rails.logger.info("Payload:")
     Rails.logger.info(JSON.pretty_generate(payload))
     Rails.logger.info("=" * 80)
     
+    # Also output to console in development
     if Rails.env.development?
       puts "\n" + "=" * 80
       puts "📤 SCREENING REQUEST"
       puts "=" * 80
-      puts "URL: #{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}"
+      puts "URL: #{THETARAY_BASE_URL}#{SCREENING_ENDPOINT}"
+      puts "Token (first 20 chars): #{@token[0..20]}..."
       puts "Payload:"
       puts JSON.pretty_generate(payload)
       puts "=" * 80 + "\n"
