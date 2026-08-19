@@ -157,13 +157,13 @@ end
 #          in: 'IN',
 #          out: 'OUT'
 #        }
-
+  
 #   enum transaction_type: {
 #          incoming: 'INCOMING',
 #          outgoing: 'OUTGOING',
 #          unknown: 'UNKNOWN'
 #        }
-
+  
 #   # Status enum with prefix
 #   enum status: {
 #          pending: 'PENDING',
@@ -177,7 +177,7 @@ end
 #          processed: 'PROCESSED',
 #          failed: 'FAILED'
 #        }, _prefix: :status
-
+  
 #   # Screening status enum with prefix
 #   enum screening_status: {
 #          pending: 'PENDING',
@@ -193,13 +193,10 @@ end
 #   validates :transaction_date, presence: true
 #   validates :transaction_direction, presence: true
 #   validates :raw_message, presence: true
-
-#   # Serialize JSON fields
-#   serialize :parties, JSON
-#   serialize :raw_data, JSON
-#   serialize :raw_fields, JSON
-#   serialize :screening_result, JSON
-
+  
+#   # No serialize needed for json/jsonb columns in PostgreSQL
+#   # The data is automatically serialized/deserialized by ActiveRecord
+  
 #   # Scopes
 #   scope :incoming, -> { where(transaction_direction: 'IN') }
 #   scope :outgoing, -> { where(transaction_direction: 'OUT') }
@@ -208,8 +205,8 @@ end
 #   scope :by_amount_range, ->(min, max) { where(transaction_amount: min..max) }
 #   scope :by_reference, ->(ref) { where('reference ILIKE ?', "%#{ref}%") }
 #   scope :recent, ->(limit = 10) { order(created_at: :desc).limit(limit) }
-
-#   # Status scopes - updated to use string values since we're using prefix
+  
+#   # Status scopes
 #   scope :pending_screening, -> { where(status: 'PENDING_SCREENING') }
 #   scope :screened, -> { where(status: 'SCREENED') }
 #   scope :screening_passed, -> { where(screening_status: 'PASSED') }
@@ -217,60 +214,59 @@ end
 #   scope :approved, -> { where(status: 'APPROVED') }
 #   scope :rejected, -> { where(status: 'REJECTED') }
 #   scope :pending_review, -> { where(status: 'PENDING_REVIEW') }
-
+  
 #   # Callbacks
 #   before_validation :set_default_values, on: :create
 #   after_create :process_after_creation, if: -> { status == 'PENDING' }
-
+  
 #   # Instance methods
 #   def debtor
-#     parties.find { |p| p["partyType"] == "Debtor" } if parties.present?
+#     parties&.find { |p| p["partyType"] == "Debtor" }
 #   end
-
+  
 #   def creditor
-#     parties.find { |p| p["partyType"] == "Creditor" } if parties.present?
+#     parties&.find { |p| p["partyType"] == "Creditor" }
 #   end
-
+  
 #   def formatted_amount
 #     "#{transaction_currency} #{transaction_amount.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse}"
 #   end
-
+  
 #   def is_incoming?
 #     transaction_direction == 'IN'
 #   end
-
+  
 #   def is_outgoing?
 #     transaction_direction == 'OUT'
 #   end
-
-#   # Updated methods to work with prefixed enums
+  
 #   def screening_passed?
 #     screening_status == 'PASSED'
 #   end
-
+  
 #   def screening_failed?
 #     screening_status == 'FAILED'
 #   end
-
+  
 #   def can_process?
 #     ['PENDING', 'PENDING_SCREENING'].include?(status)
 #   end
-
+  
 #   def can_screen?
 #     ['PENDING_SCREENING', 'SCREENING_FAILED'].include?(status)
 #   end
-
+  
 #   def processed?
 #     ['PROCESSED', 'APPROVED', 'REJECTED'].include?(status)
 #   end
-
+  
 #   # Class methods
 #   def self.process_pending
 #     where(status: 'PENDING').each do |transaction|
 #       ProcessRtgsWithScreeningJob.perform_later(transaction.raw_message)
 #     end
 #   end
-
+  
 #   def self.screening_summary
 #     {
 #       total: count,
@@ -287,9 +283,9 @@ end
 #       by_currency: group(:transaction_currency).sum(:transaction_amount)
 #     }
 #   end
-
+  
 #   private
-
+  
 #   def set_default_values
 #     self.status ||= 'PENDING'
 #     self.transaction_direction ||= 'IN'
@@ -300,7 +296,7 @@ end
 #     self.parties ||= []
 #     self.screening_status ||= 'PENDING'
 #   end
-
+  
 #   def process_after_creation
 #     # Queue for screening if not already processed
 #     if status == 'PENDING'

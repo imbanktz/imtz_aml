@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_07_03_000004) do
+ActiveRecord::Schema.define(version: 2026_08_19_082001) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -235,11 +235,18 @@ ActiveRecord::Schema.define(version: 2026_07_03_000004) do
     t.string "profile_name"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
+    t.string "rtgs_reference"
+    t.text "raw_rtgs_message"
+    t.string "screening_status", default: "pending"
+    t.jsonb "screening_result", default: {}
+    t.jsonb "screening_attempts", default: []
     t.index ["agents"], name: "index_transactions_on_agents", using: :gin
     t.index ["narratives"], name: "index_transactions_on_narratives", using: :gin
     t.index ["parties"], name: "index_transactions_on_parties", using: :gin
     t.index ["processing_type"], name: "index_transactions_on_processing_type"
     t.index ["request_id"], name: "index_transactions_on_request_id"
+    t.index ["rtgs_reference"], name: "index_transactions_on_rtgs_reference", unique: true, where: "(rtgs_reference IS NOT NULL)"
+    t.index ["screening_status"], name: "index_transactions_on_screening_status"
     t.index ["transaction_date", "transaction_currency"], name: "index_transactions_on_transaction_date_and_transaction_currency"
     t.index ["transaction_direction"], name: "index_transactions_on_transaction_direction"
   end
