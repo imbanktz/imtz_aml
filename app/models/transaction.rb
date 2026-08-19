@@ -1,4 +1,11 @@
 class Transaction < ApplicationRecord
+
+   attribute :job_id, :string
+  
+  # Scopes
+  scope :queued, -> { where(screening_status: 'QUEUED') }
+  scope :processing, -> { where(screening_status: 'PROCESSING') }
+  
   # Enums with prefixes to avoid method conflicts
   enum transaction_direction: {
          in: 'IN',
@@ -30,7 +37,9 @@ class Transaction < ApplicationRecord
          pending: 'PENDING',
          passed: 'PASSED',
          failed: 'FAILED',
-         error: 'ERROR'
+         error: 'ERROR',
+         queued: 'QUEUED',
+         processing: 'PROCESSING'
        }, _prefix: :screening
 
   # Validations
@@ -129,6 +138,23 @@ class Transaction < ApplicationRecord
       by_direction: group(:transaction_direction).count,
       by_currency: group(:transaction_currency).sum(:transaction_amount)
     }
+  end
+
+  # Status helpers
+  def queued?
+    screening_status == 'QUEUED'
+  end
+  
+  def processing?
+    screening_status == 'PROCESSING'
+  end
+  
+  def completed?
+    screening_status == 'PASSED'
+  end
+  
+  def failed?
+    screening_status == 'FAILED'
   end
   
   private

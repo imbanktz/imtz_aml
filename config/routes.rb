@@ -11,8 +11,12 @@ Rails.application.routes.draw do
 
   get 'api/v1/screening/test', to: 'api/v1/screening#test_screening'
   post 'api/v1/screening/rtgs', to: 'api/v1/screening#test_rtgs'
-  post 'api/v1/rtgs/process', to: 'api/v1/rtgs#process'
- 
+  post 'api/v1/rtgs/process_sync', to: 'api/v1/rtgs#process_sync' # sync 
+  post 'api/v1/rtgs/process_async', to: 'api/v1/rtgs#process_async' # async
+
+  get 'api/v1/rtgs/status/:id', to: 'api/v1/rtgs#status', as: 'rtgs_status'
+  post 'api/v1/rtgs/reprocess/:id', to: 'api/v1/rtgs#reprocess', as: 'rtgs_reprocess'
+  
 
   namespace :api do
     namespace :v1 do
