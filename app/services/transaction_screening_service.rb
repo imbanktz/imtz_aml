@@ -75,7 +75,7 @@ class TransactionScreeningService
 
   def make_request(payload)
     self.class.post(
-      "#{THETARAY_BASE_URL}#{SCREENING_ENDPOINT}",
+      "#{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}",
       headers: {
         'Content-Type' => 'application/json',
         'Authorization' => "Bearer #{@token}"
@@ -106,7 +106,7 @@ class TransactionScreeningService
     Rails.logger.info("=" * 80)
     Rails.logger.info("📤 SCREENING REQUEST")
     Rails.logger.info("=" * 80)
-    Rails.logger.info("URL: #{THETARAY_BASE_URL}#{SCREENING_ENDPOINT}")
+    Rails.logger.info("URL: #{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}")
     Rails.logger.info("Token (first 20 chars): #{@token[0..20]}...")
     Rails.logger.info("Payload:")
     Rails.logger.info(JSON.pretty_generate(payload))
@@ -117,7 +117,7 @@ class TransactionScreeningService
       puts "\n" + "=" * 80
       puts "📤 SCREENING REQUEST"
       puts "=" * 80
-      puts "URL: #{THETARAY_BASE_URL}#{SCREENING_ENDPOINT}"
+      puts "URL: #{THETARAY_BASE_URL}#{API_TRANSACTION_SCREENING}"
       puts "Token (first 20 chars): #{@token[0..20]}..."
       puts "Payload:"
       puts JSON.pretty_generate(payload)
