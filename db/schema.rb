@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2026_08_19_090703) do
+ActiveRecord::Schema.define(version: 2026_08_19_154525) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -240,6 +240,7 @@ ActiveRecord::Schema.define(version: 2026_08_19_090703) do
     t.string "screening_status", default: "pending"
     t.jsonb "screening_result", default: {}
     t.jsonb "screening_attempts", default: []
+    t.string "reference"
     t.index ["agents"], name: "index_transactions_on_agents", using: :gin
     t.index ["narratives"], name: "index_transactions_on_narratives", using: :gin
     t.index ["parties"], name: "index_transactions_on_parties", using: :gin
