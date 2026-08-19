@@ -23,136 +23,94 @@
 ##/
 
 class RtgsScreeningJob < ApplicationJob
-  queue_as :default
-  
-  # Retry on failure
+  queue_as :screening
   retry_on StandardError, wait: :exponentially_longer, attempts: 3
-  
 
   def perform(rtgs_message, transaction_id = nil)
-    # Store the job ID for tracking
-    if transaction_id.present?
-      transaction = Transaction.find(transaction_id)
-      transaction.update(job_id: job_id, screening_status: 'processing')
+    @transaction = transaction_id ? Transaction.find(transaction_id) : nil
+    
+    if @transaction
+      @transaction.update(screening_status: 'processing', job_id: job_id)
     end
     
     begin
-      if transaction_id.present?
-        transaction = Transaction.find(transaction_id)
-        process_existing_transaction(transaction, rtgs_message)
+      # Parse if we have a raw message
+      if rtgs_message.present?
+        parser = RtgsParserService.new(rtgs_message)
+        parsed_data = parser.call
+        
+        if parsed_data && !@transaction
+          # Create transaction if it doesn't exist
+          create_transaction(parsed_data, rtgs_message)
+        end
+      end
+      
+      # Perform screening
+      if @transaction
+        perform_screening
       else
-        process_new_rtgs(rtgs_message)
+        Rails.logger.error "No transaction found to screen"
+        return false
       end
-    rescue StandardError => e
-      # Update status on failure
-      if transaction_id.present?
-        Transaction.find(transaction_id).update(
-          screening_status: 'FAILED',
-          screening_attempts: (Transaction.find(transaction_id).screening_attempts || []) << {
-            timestamp: Time.current.iso8601,
-            status: 'FAILED',
-            error: e.message,
-            job_id: job_id
-          }
-        )
-      end
-      raise e
+      
+    rescue => e
+      Rails.logger.error "❌ Screening job failed: #{e.message}"
+      @transaction&.update(
+        screening_status: 'failed',
+        screening_result: { error: e.message, timestamp: Time.current }
+      )
+      raise
     end
-  end
-  
-  private
-  
-  def process_transaction(transaction, rtgs_message)
-    Rails.logger.info("🔄 Re-processing transaction #{transaction.id}")
-    
-    # Update the raw message if provided
-    transaction.update(raw_rtgs_message: rtgs_message) if rtgs_message.present?
-    
-    # Re-parse and screen
-    parser = RtgsParserService.new(rtgs_message || transaction.raw_rtgs_message)
-    parsed_data = parser.call
-    
-    # Send for screening
-    screening_service = TransactionScreeningService.new
-    screening_result = screening_service.screen_payload(parsed_data)
-    
-    # Update transaction with results
-    update_transaction_with_screening(transaction, screening_result)
-    
-    # Notify about completion
-    notify_completion(transaction, screening_result)
   end
 
-  def process_existing_transaction(transaction, rtgs_message)
-    Rails.logger.info("🔄 Processing transaction #{transaction.id}")
+  private
+
+  def create_transaction(parsed_data, rtgs_message)
+    @transaction = Transaction.find_or_initialize_by(
+      rtgs_reference: parsed_data['reference']
+    )
     
-    # Update the raw message if provided
-    transaction.update(raw_rtgs_message: rtgs_message) if rtgs_message.present?
+    @transaction.assign_attributes(
+      request_id: parsed_data['requestId'],
+      transaction_direction: parsed_data['transactionDirection'],
+      transaction_type: parsed_data['transactionType'],
+      transaction_amount: parsed_data['transactionAmount'],
+      transaction_currency: parsed_data['transactionCurrency'],
+      transaction_date: parsed_data['transactionDate'],
+      reference: parsed_data['reference'],
+      narrative: parsed_data['narrative'],
+      bank_code: parsed_data['bankCode'],
+      parties: parsed_data['parties'],
+      raw_fields: parsed_data['rawFields'],
+      raw_rtgs_message: rtgs_message,
+      screening_status: 'pending'
+    )
     
-    # Re-parse and screen
-    parser = RtgsParserService.new(rtgs_message || transaction.raw_rtgs_message)
-    parsed_data = parser.call
+    @transaction.save!
+    Rails.logger.info "💾 Transaction created with ID: #{@transaction.id}"
+  end
+
+  def perform_screening
+    Rails.logger.info "🔍 Starting screening for transaction #{@transaction.id}"
     
-    # Send for screening
     screening_service = TransactionScreeningService.new
-    screening_result = screening_service.screen_payload(parsed_data)
+    result = screening_service.screen_transaction(@transaction)
     
-    # Update transaction with results
-    update_transaction_with_screening(transaction, screening_result)
+    @transaction.update!(
+      screening_status: result['status'] || 'completed',
+      screening_result: result
+    )
     
-    # Notify about completion
-    notify_completion(transaction, screening_result)
+    Rails.logger.info "✅ Screening completed for transaction #{@transaction.id}: #{result['status']}"
     
-    # Clear job_id after completion
-    transaction.update(job_id: nil)
-  end
-  
-  def process_new_rtgs(rtgs_message)
-    Rails.logger.info("📨 Processing new RTGS message")
-    
-    processor = RtgsTransactionProcessor.new(rtgs_message)
-    result = processor.process
-    
-    # Notify about completion
-    notify_completion(result[:transaction], result[:screening])
-    
-    result
-  end
-  
-  def update_transaction_with_screening(transaction, screening_result)
-    attempts = transaction.screening_attempts || []
-    
-    if screening_result[:success]
-      transaction.update(
-        screening_status: 'PASSED',
-        screening_result: screening_result[:result],
-        screening_attempts: attempts << {
-          timestamp: Time.current.iso8601,
-          status: 'success',
-          result: screening_result[:result]
-        }
-      )
-    else
-      transaction.update(
-        screening_status: 'FAILED',
-        screening_attempts: attempts << {
-          timestamp: Time.current.iso8601,
-          status: 'FAILED',
-          error: screening_result[:error]
-        }
-      )
+    # Handle screening results
+    if result['checkResult'] == 'MATCH'
+      handle_match_result(result)
     end
   end
-  
-  def notify_completion(transaction, screening_result)
-    # You can implement notifications here
-    # Examples: WebSocket, Email, Slack, etc.
-    
-    if screening_result[:success]
-      Rails.logger.info("✅ Transaction #{transaction.id} screened successfully")
-    # TransactionScreeningChannel.broadcast_to(transaction, screening_result)
-    else
-      Rails.logger.error("❌ Transaction #{transaction.id} screening FAILED: #{screening_result[:error]}")
-    end
+
+  def handle_match_result(result)
+    Rails.logger.warn "⚠️ Match found for transaction #{@transaction.id}"
+    # Add notification logic here
   end
 end

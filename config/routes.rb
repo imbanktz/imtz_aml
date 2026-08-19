@@ -21,6 +21,11 @@ Rails.application.routes.draw do
   post 'api/v1/rtgs/process' => 'api/v1/rtgs#trigger_download'
   post 'api/v1/rtgs/screen/:transaction_id' => 'api/v1/rtgs#trigger_screening'
   get 'api/v1/rtgs/status' => 'api/v1/rtgs#status'
+
+  # RTGS Scheduler Management
+  post 'api/v1/rtgs_scheduler/trigger' => 'api/v1/rtgs_scheduler#trigger'
+  get 'api/v1/rtgs_scheduler/status' => 'api/v1/rtgs_scheduler#status'
+  get 'api/v1/rtgs_scheduler/history' => 'api/v1/rtgs_scheduler#history'
   
 
   namespace :api do

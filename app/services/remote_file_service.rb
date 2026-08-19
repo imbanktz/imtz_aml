@@ -21,7 +21,6 @@
 # @version  0.0.1:
 # @usage  Use ruby convention, when handling this code
 ##/
-
 class RemoteFileService
   def initialize(host: nil, username: nil, password: nil)
     @host = host || ENV['REMOTE_HOST'] || AMLOCK_SERVER_IP
@@ -29,14 +28,20 @@ class RemoteFileService
     @password = password || ENV['REMOTE_PASSWORD'] || AMLOCK_PASSWORD
   end
 
-  def list_rtgs_files(remote_path)
+  def list_rtgs_files(remote_path = nil)
+    remote_path ||= ENV['REMOTE_RTGS_PATH'] || '/incoming/rtgs'
+    
     Net::SFTP.start(@host, @username, password: @password) do |sftp|
-      sftp.dir.entries(remote_path).select do |entry|
+      entries = sftp.dir.entries(remote_path)
+      entries.select do |entry|
         entry.file? && entry.name.match?(/\.(txt|mt103|rtgs)$/i)
       end
     end
   rescue Net::SFTP::StatusException => e
-    Rails.logger.error "Failed to list files: #{e.message}"
+    Rails.logger.error "Failed to list files from #{remote_path}: #{e.message}"
+    []
+  rescue => e
+    Rails.logger.error "SFTP connection error: #{e.message}"
     []
   end
 
@@ -45,7 +50,7 @@ class RemoteFileService
       sftp.download!(remote_path, local_path)
       true
     end
-  rescue Net::SFTP::StatusException => e
+  rescue => e
     Rails.logger.error "Failed to download #{remote_path}: #{e.message}"
     false
   end
@@ -55,18 +60,8 @@ class RemoteFileService
       sftp.remove!(remote_path)
       true
     end
-  rescue Net::SFTP::StatusException => e
+  rescue => e
     Rails.logger.error "Failed to delete #{remote_path}: #{e.message}"
-    false
-  end
-
-  def move_file(remote_path, destination_path)
-    Net::SFTP.start(@host, @username, password: @password) do |sftp|
-      sftp.rename!(remote_path, destination_path)
-      true
-    end
-  rescue Net::SFTP::StatusException => e
-    Rails.logger.error "Failed to move #{remote_path}: #{e.message}"
     false
   end
 end
