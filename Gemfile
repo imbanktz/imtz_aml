@@ -11,7 +11,7 @@ gem 'prawn-table'
 gem 'devise'
 gem 'devise-jwt'
 gem 'sassc-rails'
-gem 'image_processing', '~> 1.2'
+gem 'image_processing', '~> 2.0'
 gem 'redis', '~> 5.0'
 # gem 'activeadmin_import'  # For Excel imports
 gem 'ransack'              # For advanced searching
