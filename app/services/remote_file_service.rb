@@ -23,18 +23,18 @@
 ##/
 class RemoteFileService
   def initialize(host: nil, username: nil, password: nil)
-    @host = host || ENV['REMOTE_HOST'] || AMLOCK_SERVER_IP
-    @username = username || ENV['REMOTE_USERNAME'] || AMLOCK_USER_NAME
-    @password = password || ENV['REMOTE_PASSWORD'] || AMLOCK_PASSWORD
+    @host = host || AMLOCK_SERVER_IP
+    @username = username || AMLOCK_USER_NAME
+    @password = password || AMLOCK_PASSWORD
   end
 
   def list_rtgs_files(remote_path = nil)
-    remote_path ||= ENV['REMOTE_RTGS_PATH'] || '/incoming/rtgs'
+    remote_path ||= AMLOCK_SOURCE_FILES
     
     Net::SFTP.start(@host, @username, password: @password) do |sftp|
       entries = sftp.dir.entries(remote_path)
       entries.select do |entry|
-        entry.file? && entry.name.match?(/\.(txt|mt103|rtgs)$/i)
+        entry.file? && entry.name.match?(/\.(TXT|txt|mt103|rtgs)$/i)
       end
     end
   rescue Net::SFTP::StatusException => e
