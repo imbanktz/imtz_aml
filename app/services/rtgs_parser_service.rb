@@ -79,12 +79,22 @@ class RtgsParserService
     end
   end
 
-  def parse_amount(parsed)
-    # Amount in cents for the API
-    amount = parsed[:amount].to_f
-    (amount * 100).to_i
-  end
+  # app/services/rtgs_parser_service.rb - Check parse_amount method
 
+  def parse_amount(parsed)
+    # Get the amount from 32A field
+    amount_field = parsed['32A'] || parsed['33B']
+    return nil unless amount_field
+    # Extract amount - format is YYMMDDCURAMOUNT
+    # Example: 260623TZS174308602,00
+    match = amount_field.match(/([A-Z]{3})([\d,]+)/)
+    return nil unless match
+    currency = match[1]
+    amount_str = match[2].gsub(',', '') # Remove commas
+    # Convert to integer (cents)
+    amount_str.to_i
+  end
+  
   def format_date(date_string)
     return Date.current.to_s unless date_string
     
