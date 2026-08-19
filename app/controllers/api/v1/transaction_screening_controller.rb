@@ -25,7 +25,6 @@
 
 
 class Api::V1::TransactionScreeningController < ApplicationController
-
   
   include HTTParty
   base_uri THETARAY_BASE_URL
