@@ -16,6 +16,11 @@ Rails.application.routes.draw do
 
   get 'api/v1/rtgs/status/:id', to: 'api/v1/rtgs#status', as: 'rtgs_status'
   post 'api/v1/rtgs/reprocess/:id', to: 'api/v1/rtgs#reprocess', as: 'rtgs_reprocess'
+
+  # RTGS Processing
+  post 'api/v1/rtgs/process' => 'api/v1/rtgs#trigger_download'
+  post 'api/v1/rtgs/screen/:transaction_id' => 'api/v1/rtgs#trigger_screening'
+  get 'api/v1/rtgs/status' => 'api/v1/rtgs#status'
   
 
   namespace :api do

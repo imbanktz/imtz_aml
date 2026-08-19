@@ -132,6 +132,43 @@ class Api::V1::RtgsController < ApplicationController
              transaction_id: transaction.id
            }, status: :accepted
   end
+
+  def trigger_download
+    RtgsDownloadProcessorJob.perform_later(params[:remote_path])
+    render json: { message: "RTGS download processing job queued" }, status: :accepted
+  rescue => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def trigger_screening
+    transaction = Transaction.find(params[:transaction_id])
+    screening_service = TransactionScreeningService.new
+    result = screening_service.screen_transaction(transaction)
+    
+    transaction.update(
+      screening_status: result['status'] || 'completed',
+      screening_result: result
+    )
+    
+    render json: { 
+             message: "Screening completed", 
+             transaction: transaction.as_json(only: [:id, :rtgs_reference, :screening_status])
+           }
+  rescue => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def status
+    jobs = Sidekiq::Queue.new('default').select do |job|
+      job.klass == 'RtgsDownloadProcessorJob'
+    end
+    
+    render json: {
+             queued: jobs.count,
+             running: Sidekiq::Workers.new.count,
+             message: "Processing status"
+           }
+  end
   
   private
   
