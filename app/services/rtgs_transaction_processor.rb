@@ -68,7 +68,7 @@ class RtgsTransactionProcessor
   def update_transaction_with_screening(transaction, screening_result)
     if screening_result[:success]
       transaction.update(
-        screening_status: 'completed',
+        screening_status: 'PASSED',
         screening_result: screening_result[:result],
         screening_attempts: (transaction.screening_attempts || []) << {
           timestamp: Time.current.iso8601,
@@ -78,7 +78,7 @@ class RtgsTransactionProcessor
       )
     else
       transaction.update(
-        screening_status: 'failed',
+        screening_status: 'FAILED',
         screening_attempts: (transaction.screening_attempts || []) << {
           timestamp: Time.current.iso8601,
           status: 'failed',
