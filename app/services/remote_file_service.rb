@@ -1,19 +1,8 @@
-#
+# app/services/remote_file_service.rb
 #
 # Copyright (c) 2025 
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-#
-# @package  MX to MT covnerter project
+# @package  MX to MT converter project
 # @author abdimuna, abdillah.muna@imbank.co.tz | abdimuna1@gmail.com
 # @Company  I&M BANK 
 # @description SFT file handler, upload and download remote files
@@ -62,6 +51,16 @@ class RemoteFileService
     end
   rescue => e
     Rails.logger.error "Failed to delete #{remote_path}: #{e.message}"
+    false
+  end
+
+  def move_file(remote_path, destination_path)
+    Net::SFTP.start(@host, @username, password: @password) do |sftp|
+      sftp.rename!(remote_path, destination_path)
+      true
+    end
+  rescue => e
+    Rails.logger.error "Failed to move #{remote_path}: #{e.message}"
     false
   end
 end

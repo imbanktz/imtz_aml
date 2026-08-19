@@ -22,6 +22,7 @@
 # @usage  Use ruby convention, when handling this code
 ##/
 
+# app/jobs/rtgs_screening_job.rb
 class RtgsScreeningJob < ApplicationJob
   queue_as :screening
   retry_on StandardError, wait: :exponentially_longer, attempts: 3
@@ -34,14 +35,16 @@ class RtgsScreeningJob < ApplicationJob
     end
     
     begin
-      # Parse if we have a raw message
-      if rtgs_message.present?
+      # If we have a raw message but no transaction, create one
+      if rtgs_message.present? && !@transaction
         parser = RtgsParserService.new(rtgs_message)
         parsed_data = parser.call
         
-        if parsed_data && !@transaction
-          # Create transaction if it doesn't exist
+        if parsed_data
           create_transaction(parsed_data, rtgs_message)
+        else
+          Rails.logger.error "Failed to parse RTGS message for screening"
+          return false
         end
       end
       
