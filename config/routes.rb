@@ -8,11 +8,15 @@ Rails.application.routes.draw do
 
   match 'api/v1/transaction_screening', to: 'api/v1/transaction_screening#txn_screen', via: 'post'
   match 'api/v1/tz_callback', to: 'api/v1/transaction_screening#tz_callback', via: 'post'
+
+  get 'api/v1/screening/test', to: 'api/v1/screening#test_screening'
+  post 'api/v1/screening/rtgs', to: 'api/v1/screening#test_rtgs'
  
 
   namespace :api do
     namespace :v1 do
       resources :transaction_screening
+      resources :screening
       # resources :customer_screening
     end
   end
