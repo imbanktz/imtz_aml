@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem "rails", "6.1.7.7"
+gem "rails", "6.1.7.10"
 gem 'activeadmin', "~> 2.9.0"
 gem 'importmap-rails'
 gem 'httparty'
