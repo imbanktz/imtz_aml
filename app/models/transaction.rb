@@ -24,7 +24,7 @@
 
 class Transaction < ApplicationRecord
 
-   attribute :job_id, :string
+  attribute :job_id, :string
   
   # Scopes
   scope :queued, -> { where(screening_status: 'QUEUED') }
@@ -60,12 +60,12 @@ class Transaction < ApplicationRecord
   enum screening_status: {
          pending: 'PENDING',
          passed: 'PASSED',
+         completed: 'COMPLETED',
          failed: 'FAILED',
          error: 'ERROR',
          queued: 'QUEUED',
          processing: 'PROCESSING'
        }, _prefix: :screening
-
   # Validations
   validates :request_id, presence: true, uniqueness: true
   validates :transaction_amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
