@@ -5,22 +5,17 @@ class RtgsSchedulerService
 
   def process
     Rails.logger.info "🔄 Starting RTGS scheduled processing at #{Time.current}"
-    
     remote_service = RemoteFileService.new
-    remote_path = ENV['REMOTE_RTGS_PATH'] || '/incoming/rtgs'
-    
+    remote_path = AMLOCK_SOURCE_FILES
     files = remote_service.list_rtgs_files(remote_path)
-    
     if files.empty?
       Rails.logger.info "No RTGS files found to process"
       return { processed: 0, failed: 0, message: "No files found" }
     end
     
     Rails.logger.info "Found #{files.count} RTGS files to process"
-    
     processed_count = 0
     failed_count = 0
-    
     files.each do |file|
       if process_single_file(remote_service, file, remote_path)
         processed_count += 1
