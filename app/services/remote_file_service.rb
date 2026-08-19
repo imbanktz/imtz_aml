@@ -11,8 +11,6 @@
 # @usage  Use ruby convention, when handling this code
 ##/
 
-
-# app/services/remote_file_service.rb
 class RemoteFileService
   def initialize(host: nil, username: nil, password: nil)
     @host = host || ENV['REMOTE_HOST'] || AMLOCK_SERVER_IP
@@ -39,15 +37,18 @@ class RemoteFileService
     rescue Net::SFTP::StatusException => e
       Rails.logger.error "Failed to list files from #{remote_path}: #{e.message}"
       puts "❌ SFTP error: #{e.message}"
-      return []  # Return empty array
+      return []
     rescue => e
       Rails.logger.error "SFTP connection error: #{e.message}"
       puts "❌ Connection error: #{e.message}"
-      return []  # Return empty array
+      return []
     end
   end
 
   def download_file(remote_path, local_path)
+    # Convert Pathname to string if needed
+    local_path = local_path.to_s if local_path.is_a?(Pathname)
+    
     begin
       Net::SFTP.start(@host, @username, password: @password) do |sftp|
         puts "📥 Downloading: #{remote_path} -> #{local_path}"

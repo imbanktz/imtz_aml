@@ -50,44 +50,91 @@ class ProcessRemoteFilesJob < ApplicationJob
     required_vars.all? { |var| ENV[var].present? }
   end
 
-  def process_file(remote_service, file, download_dir, processed_dir, error_dir)
-    remote_path = File.join(AMLOCK_SOURCE_FILES, file.name)
-    local_path = download_dir.join(file.name)
+  # def process_file(remote_service, file, download_dir, processed_dir, error_dir)
+  #   remote_path = File.join(AMLOCK_SOURCE_FILES, file.name)
+  #   local_path = download_dir.join(file.name)
 
+  #   begin
+  #     # Download the file
+  #     Rails.logger.info "Downloading #{file.name}..."
+  #     unless remote_service.download_file(remote_path, local_path)
+  #       Rails.logger.error "Failed to download #{file.name}"
+  #       return false
+  #     end
+
+  #     # Process the RTGS message
+  #     if process_rtgs_content(local_path, file.name)
+  #       # Move to processed directory
+  #       FileUtils.mv(local_path, processed_dir.join(file.name))
+  
+  #       # Delete from remote server
+  #       remote_service.delete_remote_file(remote_path)
+  
+  #       Rails.logger.info "✅ Successfully processed #{file.name}"
+  #       return true
+  #     else
+  #       # Move to error directory
+  #       FileUtils.mv(local_path, error_dir.join(file.name))
+  #       Rails.logger.error "❌ Failed to process #{file.name}, moved to errors"
+  #       return false
+  #     end
+
+  #   rescue => e
+  #     Rails.logger.error "Error processing #{file.name}: #{e.message}"
+  #     Rails.logger.error e.backtrace.join("\n")
+  
+  #     # Move to error directory if file exists locally
+  #     if File.exist?(local_path)
+  #       FileUtils.mv(local_path, error_dir.join(file.name))
+  #     end
+  #     return false
+  #   end
+  # end
+  def process_file(remote_service, file, remote_path)
+    download_dir = Rails.root.join('tmp', 'rtgs_downloads')
+    processed_dir = Rails.root.join('tmp', 'rtgs_processed')
+    error_dir = Rails.root.join('tmp', 'rtgs_errors')
+    
+    FileUtils.mkdir_p(download_dir)
+    FileUtils.mkdir_p(processed_dir)
+    FileUtils.mkdir_p(error_dir)
+    
+    # Use to_s to convert Pathname to string
+    local_path = download_dir.join(file.name).to_s
+    remote_full_path = File.join(remote_path, file.name)
+    
     begin
       # Download the file
-      Rails.logger.info "Downloading #{file.name}..."
-      unless remote_service.download_file(remote_path, local_path)
-        Rails.logger.error "Failed to download #{file.name}"
+      puts "📥 Downloading #{file.name}..."
+      unless remote_service.download_file(remote_full_path, local_path)
+        puts "❌ Failed to download #{file.name}"
         return false
       end
-
-      # Process the RTGS message
-      if process_rtgs_content(local_path, file.name)
-        # Move to processed directory
-        FileUtils.mv(local_path, processed_dir.join(file.name))
+      
+      # Read and process the file
+      rtgs_message = File.read(local_path)
+      success = process_rtgs_message(rtgs_message, file.name)
+      
+      if success
+        # Move to processed
+        FileUtils.mv(local_path, processed_dir.join(file.name).to_s)
+        puts "✅ Processed #{file.name}"
         
-        # Delete from remote server
-        remote_service.delete_remote_file(remote_path)
-        
-        Rails.logger.info "✅ Successfully processed #{file.name}"
+        # Optionally delete from remote
+        remote_service.delete_remote_file(remote_full_path)
         return true
       else
-        # Move to error directory
-        FileUtils.mv(local_path, error_dir.join(file.name))
-        Rails.logger.error "❌ Failed to process #{file.name}, moved to errors"
+        # Move to error
+        FileUtils.mv(local_path, error_dir.join(file.name).to_s)
+        puts "❌ Failed to process #{file.name}"
         return false
       end
-
-    rescue => e
-      Rails.logger.error "Error processing #{file.name}: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
       
-      # Move to error directory if file exists locally
-      if File.exist?(local_path)
-        FileUtils.mv(local_path, error_dir.join(file.name))
-      end
-      return false
+    rescue => e
+      puts "❌ Error processing #{file.name}: #{e.message}"
+      puts e.backtrace.first(3).join("\n")
+      FileUtils.mv(local_path, error_dir.join(file.name).to_s) if File.exist?(local_path)
+      false
     end
   end
 
