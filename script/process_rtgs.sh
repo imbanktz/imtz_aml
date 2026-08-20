@@ -1,6 +1,7 @@
 #!/bin/bash
 # script/process_rtgs.sh
-# RTGS Processing Script - Runs commands inside Docker container
+# Author: Abdillah Muna
+# RTGS Processing Script - Downloads and processes RTGS files via Docker
 
 set -e
 
@@ -11,13 +12,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Find the Rails root directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$(dirname "$SCRIPT_DIR")"
-
 # Default values
 LIMIT=${1:-"all"}
-RAILS_ENV=${RAILS_ENV:-"production"}
+SERVICE_NAME=${SERVICE_NAME:-"imtz_aml-web"}
 
 # Function to print colored output
 print_message() {
@@ -40,20 +37,25 @@ print_info() {
     echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')] ℹ️ $1${NC}"
 }
 
-# Function to run Rails commands inside Docker container
-run_rails_command() {
-    cd "$APP_DIR"
-    docker compose exec -T imtz_aml-web bundle exec rails runner "$1"
+print_separator() {
+    echo -e "${BLUE}============================================================${NC}"
 }
 
-# Function to process files directly from remote
+# Function to run Rails commands inside Docker container
+run_rails_command() {
+    local command="$1"
+    docker compose exec -T "$SERVICE_NAME" bundle exec rails runner "$command"
+}
+
+# Function to process files from remote
 process_from_remote() {
+    print_separator
     print_info "🚀 RTGS Processing Started"
     print_info "Limit: $LIMIT"
-    print_info "Environment: $RAILS_ENV"
-    print_info "="*60
+    print_info "Environment: ${RAILS_ENV:-production}"
+    print_separator
     
-    RAILS_COMMAND="
+    local rails_command="
         remote_path = '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
         limit = $([ "$LIMIT" != "all" ] && echo "$LIMIT" || echo "nil")
         
@@ -75,9 +77,11 @@ process_from_remote() {
         
         puts \"Found \#{files_to_process.count} files to process\"
         
-        processed = 0
-        failed = 0
-        skipped = 0
+        results = {
+            processed: 0,
+            failed: 0,
+            skipped: 0
+        }
         
         download_dir = Rails.root.join('tmp', 'rtgs_downloads')
         FileUtils.mkdir_p(download_dir)
@@ -91,7 +95,7 @@ process_from_remote() {
             
             unless remote_service.download_file(remote_full_path, local_path)
                 puts \"  ❌ Download failed\"
-                failed += 1
+                results[:failed] += 1
                 next
             end
             
@@ -101,7 +105,7 @@ process_from_remote() {
             
             if !parsed || parsed['reference'].blank?
                 puts \"  ❌ Parse failed or no reference\"
-                failed += 1
+                results[:failed] += 1
                 FileUtils.rm_f(local_path)
                 next
             end
@@ -110,7 +114,7 @@ process_from_remote() {
             
             if transaction.persisted?
                 puts \"  ⏭️ Already exists (ID: \#{transaction.id})\"
-                skipped += 1
+                results[:skipped] += 1
                 FileUtils.rm_f(local_path)
                 next
             end
@@ -132,33 +136,37 @@ process_from_remote() {
             
             if transaction.save
                 puts \"  ✅ Transaction created (ID: \#{transaction.id})\"
-                processed += 1
+                results[:processed] += 1
                 RtgsScreeningJob.perform_later(content, transaction.id)
                 puts \"  🔍 Screening queued\"
             else
                 puts \"  ❌ Save failed: \#{transaction.errors.full_messages.join(', ')}\"
-                failed += 1
+                results[:failed] += 1
             end
             
             FileUtils.rm_f(local_path)
         end
         
-        puts \"\n\" + \"=\" * 60
+        puts \"\"
+        print_separator
         puts \"📊 Summary:\"
-        puts \"  Processed: \#{processed}\"
-        puts \"  Failed: \#{failed}\"
-        puts \"  Skipped: \#{skipped}\"
-        puts \"  Total: \#{processed + failed + skipped}\"
+        puts \"  Processed: \#{results[:processed]}\"
+        puts \"  Failed: \#{results[:failed]}\"
+        puts \"  Skipped: \#{results[:skipped]}\"
+        puts \"  Total: \#{results[:processed] + results[:failed] + results[:skipped]}\"
+        print_separator
+        
+        results
     "
     
-    run_rails_command "$RAILS_COMMAND"
+    run_rails_command "$rails_command"
 }
 
 # Function to check status
 check_status() {
     print_info "📊 Checking RTGS processing status..."
     
-    RAILS_COMMAND="
+    local rails_command="
         puts '📊 Transaction Summary:'
         puts \"  Total: \#{Transaction.count}\"
         puts \"  Pending: \#{Transaction.where(screening_status: 'pending').count}\"
@@ -171,7 +179,7 @@ check_status() {
             status = t.screening_status
             result = t.screening_result.is_a?(Hash) ? t.screening_result['result'] || t.screening_result : t.screening_result
             check_result = result.is_a?(Hash) ? result['checkResult'] : 'N/A'
-            puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.transaction_amount} \#{t.transaction_currency} - \#{status} - \#{check_result}\"
+            puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.transaction_amount} \#{t.transaction_currency} - \#{status}\"
         end
         
         failed = Transaction.where(screening_status: 'failed')
@@ -183,22 +191,29 @@ check_status() {
         end
     "
     
-    run_rails_command "$RAILS_COMMAND"
+    run_rails_command "$rails_command"
 }
 
 # Function to show usage
 show_usage() {
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: $0 [COMMAND] [OPTIONS]"
     echo ""
-    echo "Options:"
+    echo "Commands:"
     echo "  process [limit]  - Download and process RTGS files from remote"
     echo "  status           - Check processing status"
     echo "  help             - Show this help message"
+    echo ""
+    echo "Options:"
+    echo "  limit            - Number of files to process (default: all)"
     echo ""
     echo "Examples:"
     echo "  $0 process 5     - Process 5 files from remote"
     echo "  $0 process all   - Process all files from remote"
     echo "  $0 status        - Check current status"
+    echo ""
+    echo "Environment Variables:"
+    echo "  SERVICE_NAME     - Docker service name (default: imtz_aml-web)"
+    echo "  RAILS_ENV        - Rails environment (default: production)"
     echo ""
 }
 
@@ -222,7 +237,7 @@ main() {
             check_status
             ;;
         *)
-            print_error "Unknown option: $1"
+            print_error "Unknown command: $1"
             show_usage
             exit 1
             ;;
