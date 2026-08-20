@@ -1,346 +1,190 @@
 #!/bin/bash
-# script/process_rtgs.sh
-# Author: Abdillah Muna , 20, Aug 2026
-# RTGS Processing Script - Downloads and processes RTGS files
+# script/rtgs_cron.sh
+# Cronjob script for RTGS processing - calls the Rails process_rtgs_batch method
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Find the Rails root directory (parent of script directory)
+# Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "SCRIPT_DIR: $SCRIPT_DIR"
-echo "APP_DIR: $APP_DIR"
-
-# Default values
-LIMIT=${1:-"all"}
+# Configuration
 RAILS_ENV=${RAILS_ENV:-"production"}
+LIMIT=${1:-"all"}  # Default to all files, or pass a number as first argument
+LOG_DIR="$APP_DIR/log"
+LOG_FILE="$LOG_DIR/rtgs_cron_$(date +%Y%m%d).log"
+PID_FILE="$APP_DIR/tmp/pids/rtgs_cron.pid"
 
-# Function to print colored output
-print_message() {
-    echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
+# Create directories if they don't exist
+mkdir -p "$LOG_DIR"
+mkdir -p "$APP_DIR/tmp/pids"
+
+# Colors for output (only if terminal)
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+fi
+
+# Logging function
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-print_success() {
-    echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')] ✅ $1${NC}"
+log_success() {
+    log_message "✅ $1"
 }
 
-print_error() {
-    echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] ❌ $1${NC}"
+log_error() {
+    log_message "❌ $1"
 }
 
-print_warning() {
-    echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] ⚠️ $1${NC}"
+log_warning() {
+    log_message "⚠️ $1"
 }
 
-# Function to check if Rails environment is ready
-check_rails_environment() {
-    print_message "Checking Rails environment..."
-    
-    cd "$APP_DIR"
-    
-    # Check if this is a Rails app
-    if [ ! -f "config/application.rb" ]; then
-        print_error "Not in a Rails application directory: $APP_DIR"
-        print_error "Current directory: $(pwd)"
-        exit 1
+log_info() {
+    log_message "ℹ️ $1"
+}
+
+# Function to check if already running
+check_running() {
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ps -p "$PID" > /dev/null 2>&1; then
+            log_warning "Process already running with PID $PID"
+            return 0
+        else
+            log_info "Removing stale PID file"
+            rm -f "$PID_FILE"
+        fi
     fi
-    
-    # Check if bundle is installed
-    if ! command -v bundle &> /dev/null; then
-        print_error "Bundler not found. Please install bundler: gem install bundler"
-        exit 1
-    fi
-    
-    # Check if gems are installed
-    if ! bundle check &> /dev/null; then
-        print_warning "Bundle not installed. Running bundle install..."
-        bundle install
-    fi
-    
-    print_success "Rails environment ready"
-    cd "$APP_DIR"
+    return 1
 }
 
-# Function to run Rails commands
+# Function to create PID file
+create_pid() {
+    echo $$ > "$PID_FILE"
+}
+
+# Function to remove PID file
+remove_pid() {
+    rm -f "$PID_FILE"
+}
+
+# Function to run Rails command
 run_rails_command() {
     cd "$APP_DIR"
     bundle exec rails runner "$1"
 }
 
-# Function to download files only
-download_only() {
-    print_message "📥 Downloading RTGS files..."
+# Function to process RTGS files
+process_rtgs_files() {
+    log_info "Starting RTGS processing..."
     
-    RAILS_COMMAND="
-        puts 'Starting download...'
-        remote_path = '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
-        remote_service = RemoteFileService.new(
-            host: AMLOCK_SERVER_IP,
-            username: AMLOCK_USER_NAME,
-            password: AMLOCK_PASSWORD
-        )
-        
-        files = remote_service.list_rtgs_files(remote_path) || []
-        puts \"Found \#{files.count} files to download\"
-        
-        download_dir = Rails.root.join('tmp', 'downloaded_files')
-        FileUtils.mkdir_p(download_dir)
-        
-        downloaded = 0
-        files.each do |file|
-            remote_full_path = File.join(remote_path, file.name)
-            local_path = download_dir.join(file.name).to_s
-            
-            if remote_service.download_file(remote_full_path, local_path)
-                puts \"  ✅ Downloaded: \#{file.name}\"
-                downloaded += 1
-            else
-                puts \"  ❌ Failed: \#{file.name}\"
-            end
-        end
-        
-        puts \"\n📊 Downloaded \#{downloaded} files to \#{download_dir}\"
-    "
-    
-    run_rails_command "$RAILS_COMMAND"
-}
-
-# Function to process transactions from downloaded files
-process_downloaded_files() {
-    print_message "🔄 Processing downloaded RTGS files..."
-    
-    RAILS_COMMAND="
-        download_dir = Rails.root.join('tmp', 'downloaded_files')
-        
-        if !Dir.exist?(download_dir)
-            puts 'No downloaded files found. Run download first.'
-            exit 1
-        end
-        
-        files = Dir.glob(download_dir.join('*.{txt,mt103,rtgs,dat}'))
-        
-        if files.empty?
-            puts 'No RTGS files found in download directory'
-            exit 1
-        end
-        
-        puts \"Found \#{files.count} files to process\"
-        
-        processed = 0
-        failed = 0
-        skipped = 0
-        
-        files.each do |file_path|
-            file_name = File.basename(file_path)
-            puts \"\n📄 Processing: \#{file_name}\"
-            
-            content = File.read(file_path)
-            parser = ManualRtgsParserService.new(content)
-            parsed = parser.call
-            
-            if !parsed || parsed['reference'].blank?
-                puts \"  ❌ Parse failed or no reference\"
-                failed += 1
-                next
-            end
-            
-            transaction = Transaction.find_or_initialize_by(rtgs_reference: parsed['reference'])
-            
-            if transaction.persisted?
-                puts \"  ⏭️ Already exists (ID: \#{transaction.id})\"
-                skipped += 1
-                next
-            end
-            
-            # Build transaction
-            transaction.request_id = parsed['requestId']
-            transaction.transaction_direction = parsed['transactionDirection']
-            transaction.transaction_amount = parsed['transactionAmount']
-            transaction.transaction_currency = parsed['transactionCurrency']
-            transaction.transaction_date = parsed['transactionDate']
-            transaction.rtgs_reference = parsed['reference']
-            transaction.parties = parsed['parties']
-            transaction.raw_rtgs_message = content
-            transaction.screening_status = 'pending'
-            
-            if Transaction.column_names.include?('narrative') && parsed['narrative'].present?
-                transaction.narrative = parsed['narrative']
-            end
-            
-            if transaction.save
-                puts \"  ✅ Transaction created (ID: \#{transaction.id})\"
-                processed += 1
-                RtgsScreeningJob.perform_later(content, transaction.id)
-                puts \"  🔍 Screening queued\"
-            else
-                puts \"  ❌ Save failed: \#{transaction.errors.full_messages.join(', ')}\"
-                failed += 1
-            end
-        end
-        
-        puts \"\n\" + \"=\" * 60
-        puts \"📊 Summary:\"
-        puts \"  Processed: \#{processed}\"
-        puts \"  Failed: \#{failed}\"
-        puts \"  Skipped: \#{skipped}\"
-        puts \"  Total: \#{processed + failed + skipped}\"
-    "
-    
-    run_rails_command "$RAILS_COMMAND"
-}
-
-# Function to process files directly from remote
-process_from_remote() {
+    # Build the limit parameter
     local limit_param=""
     if [ "$LIMIT" != "all" ] && [ "$LIMIT" -gt 0 ] 2>/dev/null; then
         limit_param=", $LIMIT"
+        log_info "Processing limit: $LIMIT files"
+    else
+        log_info "Processing all files"
     fi
     
-    print_message "🔄 Processing RTGS files from remote (limit: $LIMIT)..."
-    
-    RAILS_COMMAND="
-        remote_path = '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
-        limit = $([ "$LIMIT" != "all" ] && echo "$LIMIT" || echo "nil")
+    # Run the Rails command using process_rtgs_batch
+    local rails_command="
+        # Load console helpers
+        load 'config/initializers/console_helpers.rb' if File.exist?('config/initializers/console_helpers.rb')
         
-        puts \"🔍 Looking for files in: \#{remote_path}\"
-        
-        remote_service = RemoteFileService.new(
-            host: AMLOCK_SERVER_IP,
-            username: AMLOCK_USER_NAME,
-            password: AMLOCK_PASSWORD
-        )
-        
-        all_files = remote_service.list_rtgs_files(remote_path) || []
-        files_to_process = limit ? all_files.first(limit) : all_files
-        
-        if files_to_process.empty?
-            puts 'No RTGS files found'
-            exit 0
+        # Check if process_rtgs_batch exists
+        if defined?(process_rtgs_batch)
+            puts '📊 Processing RTGS files...'
+            result = process_rtgs_batch($LIMIT)
+            puts \"Result: \#{result.inspect}\"
+            result
+        else
+            # Fallback: use the job directly
+            puts '⚠️ process_rtgs_batch not found, using job directly'
+            remote_path = '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
+            remote_service = RemoteFileService.new(
+                host: AMLOCK_SERVER_IP,
+                username: AMLOCK_USER_NAME,
+                password: AMLOCK_PASSWORD
+            )
+            
+            all_files = remote_service.list_rtgs_files(remote_path) || []
+            files_to_process = $LIMIT ? all_files.first($LIMIT) : all_files
+            
+            puts \"Processing \#{files_to_process.count} files\"
+            
+            processed = 0
+            failed = 0
+            skipped = 0
+            
+            files_to_process.each do |file|
+                file_name = file.is_a?(String) ? file : file.name
+                puts \"\n📄 \#{file_name}\"
+                
+                job = ProcessRtgsWithManualParserJob.new
+                result = job.send(:process_file, remote_service, file, remote_path)
+                
+                case result
+                when :processed
+                    processed += 1
+                when :skipped
+                    skipped += 1
+                else
+                    failed += 1
+                end
+            end
+            
+            puts \"\n📊 Summary: Processed: \#{processed}, Failed: \#{failed}, Skipped: \#{skipped}\"
+            { processed: processed, failed: failed, skipped: skipped }
         end
-        
-        puts \"Found \#{files_to_process.count} files to process\"
-        
-        processed = 0
-        failed = 0
-        skipped = 0
-        
-        download_dir = Rails.root.join('tmp', 'rtgs_downloads')
-        FileUtils.mkdir_p(download_dir)
-        
-        files_to_process.each do |file|
-            file_name = file.name
-            puts \"\n📄 Processing: \#{file_name}\"
-            
-            local_path = download_dir.join(file_name).to_s
-            remote_full_path = File.join(remote_path, file_name)
-            
-            unless remote_service.download_file(remote_full_path, local_path)
-                puts \"  ❌ Download failed\"
-                failed += 1
-                next
-            end
-            
-            content = File.read(local_path)
-            parser = ManualRtgsParserService.new(content)
-            parsed = parser.call
-            
-            if !parsed || parsed['reference'].blank?
-                puts \"  ❌ Parse failed or no reference\"
-                failed += 1
-                FileUtils.rm_f(local_path)
-                next
-            end
-            
-            transaction = Transaction.find_or_initialize_by(rtgs_reference: parsed['reference'])
-            
-            if transaction.persisted?
-                puts \"  ⏭️ Already exists (ID: \#{transaction.id})\"
-                skipped += 1
-                FileUtils.rm_f(local_path)
-                next
-            end
-            
-            # Build transaction
-            transaction.request_id = parsed['requestId']
-            transaction.transaction_direction = parsed['transactionDirection']
-            transaction.transaction_amount = parsed['transactionAmount']
-            transaction.transaction_currency = parsed['transactionCurrency']
-            transaction.transaction_date = parsed['transactionDate']
-            transaction.rtgs_reference = parsed['reference']
-            transaction.parties = parsed['parties']
-            transaction.raw_rtgs_message = content
-            transaction.screening_status = 'pending'
-            
-            if Transaction.column_names.include?('narrative') && parsed['narrative'].present?
-                transaction.narrative = parsed['narrative']
-            end
-            
-            if transaction.save
-                puts \"  ✅ Transaction created (ID: \#{transaction.id})\"
-                processed += 1
-                RtgsScreeningJob.perform_later(content, transaction.id)
-                puts \"  🔍 Screening queued\"
-            else
-                puts \"  ❌ Save failed: \#{transaction.errors.full_messages.join(', ')}\"
-                failed += 1
-            end
-            
-            FileUtils.rm_f(local_path)
-        end
-        
-        puts \"\n\" + \"=\" * 60
-        puts \"📊 Summary:\"
-        puts \"  Processed: \#{processed}\"
-        puts \"  Failed: \#{failed}\"
-        puts \"  Skipped: \#{skipped}\"
-        puts \"  Total: \#{processed + failed + skipped}\"
     "
     
-    run_rails_command "$RAILS_COMMAND"
+    # Replace $LIMIT in the command
+    rails_command="${rails_command//\$LIMIT/$LIMIT}"
+    
+    # Run the command
+    run_rails_command "$rails_command"
+    
+    local exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        log_success "RTGS processing completed successfully"
+    else
+        log_error "RTGS processing failed with exit code: $exit_code"
+    fi
+    
+    return $exit_code
 }
 
 # Function to check status
 check_status() {
-    print_message "📊 Checking RTGS processing status..."
+    log_info "Checking RTGS status..."
     
-    RAILS_COMMAND="
-        puts \"📊 Transaction Summary:\"
+    local rails_command="
+        puts '📊 RTGS Status:'
         puts \"  Total: \#{Transaction.count}\"
         puts \"  Pending: \#{Transaction.where(screening_status: 'pending').count}\"
         puts \"  Processing: \#{Transaction.where(screening_status: 'processing').count}\"
         puts \"  Completed: \#{Transaction.where(screening_status: 'completed').count}\"
         puts \"  Failed: \#{Transaction.where(screening_status: 'failed').count}\"
         
-        if Redis.current && Redis.current.get('rtgs_processor:last_run')
+        if Redis.current.get('rtgs_processor:last_run')
             puts \"  Last run: \#{Redis.current.get('rtgs_processor:last_run')}\"
-        end
-        
-        puts \"\n📋 Latest Transactions:\"
-        Transaction.order(created_at: :desc).limit(5).each do |t|
-            status = t.screening_status
-            result = t.screening_result.is_a?(Hash) ? t.screening_result['result'] || t.screening_result : t.screening_result
-            check_result = result.is_a?(Hash) ? result['checkResult'] : 'N/A'
-            puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.transaction_amount} \#{t.transaction_currency} - \#{status}\"
-        end
-        
-        failed = Transaction.where(screening_status: 'failed')
-        if failed.any?
-            puts \"\n⚠️ Failed Transactions:\"
-            failed.each do |t|
-                puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.screening_result}\"
-            end
         end
     "
     
-    run_rails_command "$RAILS_COMMAND"
+    run_rails_command "$rails_command"
 }
 
 # Function to show usage
@@ -348,53 +192,82 @@ show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  process [limit]  - Download and process RTGS files from remote"
-    echo "  download         - Download files only (no processing)"
-    echo "  process-local    - Process already downloaded files"
+    echo "  process [limit]  - Process RTGS files (default: all files)"
     echo "  status           - Check processing status"
     echo "  help             - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 process 5     - Process 5 files from remote"
-    echo "  $0 process all   - Process all files from remote"
-    echo "  $0 download      - Download files to tmp/downloaded_files/"
-    echo "  $0 process-local - Process files from tmp/downloaded_files/"
-    echo "  $0 status        - Check current status"
+    echo "  $0 process 10    - Process 10 files"
+    echo "  $0 process all   - Process all files"
+    echo "  $0 status        - Check status"
     echo ""
 }
 
 # Main function
 main() {
-    if [ -z "$1" ] || [ "$1" == "help" ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-        show_usage
+    # Check if already running
+    if check_running; then
         exit 0
     fi
-
-    # Check Rails environment
-    check_rails_environment
-
-    case "$1" in
-        process)
+    
+    # Create PID file
+    create_pid
+    
+    # Trap exit to remove PID file
+    trap remove_pid EXIT
+    
+    # Parse arguments
+    local action="process"
+    local limit="all"
+    
+    if [ -n "$1" ]; then
+        if [ "$1" == "status" ]; then
+            action="status"
+        elif [ "$1" == "help" ] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+            show_usage
+            exit 0
+        elif [ "$1" == "process" ]; then
+            action="process"
             if [ -n "$2" ]; then
-                LIMIT="$2"
-            else
-                LIMIT="all"
+                limit="$2"
             fi
-            process_from_remote
-            ;;
-        download)
-            download_only
-            ;;
-        process-local)
-            process_downloaded_files
-            ;;
+        else
+            # If first arg is a number, treat it as limit for process
+            if [ "$1" -gt 0 ] 2>/dev/null; then
+                limit="$1"
+            else
+                echo "Unknown option: $1"
+                show_usage
+                exit 1
+            fi
+        fi
+    fi
+    
+    # Set LIMIT for the script
+    LIMIT="$limit"
+    
+    # Execute action
+    case "$action" in
         status)
             check_status
             ;;
-        *)
-            print_error "Unknown option: $1"
-            show_usage
-            exit 1
+        process)
+            log_info "="*60
+            log_info "🚀 RTGS Cron Job Started"
+            log_info "Limit: $LIMIT"
+            log_info "Environment: $RAILS_ENV"
+            log_info "="*60
+            
+            process_rtgs_files
+            
+            local exit_code=$?
+            
+            log_info "="*60
+            log_info "🏁 RTGS Cron Job Completed"
+            log_info "Exit Code: $exit_code"
+            log_info "="*60
+            
+            exit $exit_code
             ;;
     esac
 }
