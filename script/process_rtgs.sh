@@ -1,5 +1,6 @@
 #!/bin/bash
 # script/process_rtgs.sh
+# Author: Abdillah Muna , 20, Aug 2026
 # RTGS Processing Script - Downloads and processes RTGS files
 
 set -e
@@ -11,9 +12,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Script directory
+# Find the Rails root directory (parent of script directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(dirname "$SCRIPT_DIR")"
+
+echo "SCRIPT_DIR: $SCRIPT_DIR"
+echo "APP_DIR: $APP_DIR"
 
 # Default values
 LIMIT=${1:-"all"}
@@ -40,17 +44,29 @@ print_warning() {
 check_rails_environment() {
     print_message "Checking Rails environment..."
     
-    if [ ! -f "$APP_DIR/config/application.rb" ]; then
-        print_error "Not in a Rails application directory"
+    cd "$APP_DIR"
+    
+    # Check if this is a Rails app
+    if [ ! -f "config/application.rb" ]; then
+        print_error "Not in a Rails application directory: $APP_DIR"
+        print_error "Current directory: $(pwd)"
         exit 1
     fi
     
-    if ! bundle check > /dev/null 2>&1; then
-        print_error "Bundle not installed. Run 'bundle install' first."
+    # Check if bundle is installed
+    if ! command -v bundle &> /dev/null; then
+        print_error "Bundler not found. Please install bundler: gem install bundler"
         exit 1
+    fi
+    
+    # Check if gems are installed
+    if ! bundle check &> /dev/null; then
+        print_warning "Bundle not installed. Running bundle install..."
+        bundle install
     fi
     
     print_success "Rails environment ready"
+    cd "$APP_DIR"
 }
 
 # Function to run Rails commands
@@ -64,6 +80,7 @@ download_only() {
     print_message "📥 Downloading RTGS files..."
     
     RAILS_COMMAND="
+        puts 'Starting download...'
         remote_path = '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
         remote_service = RemoteFileService.new(
             host: AMLOCK_SERVER_IP,
@@ -193,6 +210,8 @@ process_from_remote() {
         remote_path = '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
         limit = $([ "$LIMIT" != "all" ] && echo "$LIMIT" || echo "nil")
         
+        puts \"🔍 Looking for files in: \#{remote_path}\"
+        
         remote_service = RemoteFileService.new(
             host: AMLOCK_SERVER_IP,
             username: AMLOCK_USER_NAME,
@@ -269,11 +288,12 @@ process_from_remote() {
                 processed += 1
                 RtgsScreeningJob.perform_later(content, transaction.id)
                 puts \"  🔍 Screening queued\"
-                FileUtils.rm_f(local_path)
             else
                 puts \"  ❌ Save failed: \#{transaction.errors.full_messages.join(', ')}\"
                 failed += 1
             end
+            
+            FileUtils.rm_f(local_path)
         end
         
         puts \"\n\" + \"=\" * 60
@@ -299,7 +319,7 @@ check_status() {
         puts \"  Completed: \#{Transaction.where(screening_status: 'completed').count}\"
         puts \"  Failed: \#{Transaction.where(screening_status: 'failed').count}\"
         
-        if Redis.current.get('rtgs_processor:last_run')
+        if Redis.current && Redis.current.get('rtgs_processor:last_run')
             puts \"  Last run: \#{Redis.current.get('rtgs_processor:last_run')}\"
         end
         
@@ -308,7 +328,7 @@ check_status() {
             status = t.screening_status
             result = t.screening_result.is_a?(Hash) ? t.screening_result['result'] || t.screening_result : t.screening_result
             check_result = result.is_a?(Hash) ? result['checkResult'] : 'N/A'
-            puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.transaction_amount} \#{t.transaction_currency} - \#{status} - \#{check_result}\"
+            puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.transaction_amount} \#{t.transaction_currency} - \#{status}\"
         end
         
         failed = Transaction.where(screening_status: 'failed')
@@ -345,7 +365,7 @@ show_usage() {
 
 # Main function
 main() {
-    if [ -z "$1" ] || [ "$1" == "help" ]; then
+    if [ -z "$1" ] || [ "$1" == "help" ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
         show_usage
         exit 0
     fi
