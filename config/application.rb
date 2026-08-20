@@ -13,7 +13,8 @@ module FleetManager
     config.assets.enabled = true
     #config.assets.preffix = '/assets/'
     config.assets.precompile += %w(active_admin.scss, active_admin.js)
-    config.active_job.queue_adapter = :async
+    #config.active_job.queue_adapter = :async
+    config.active_job.queue_adapter = :sidekiq
     # time zone
     # Set default time zone to East Africa
     # config.active_record.default_timezone = :local

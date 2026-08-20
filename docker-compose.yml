@@ -84,21 +84,18 @@ services:
     restart: unless-stopped
     networks:
       - fleet-network
-
-  imtz_aml-sidekiq:
-    image: abdimuna/inmtz-ipg-railsappv1:1
-    build: .
-    container_name: imtz_aml-sidekiq
-    command: >
-      sh -c "
-        ./wait-for-it.sh imtz_aml-db:5432 --timeout=60 --
-        ./wait-for-it.sh imtz_aml-redis:6379 --timeout=60 --
-        bundle exec sidekiq -C config/sidekiq.yml -e production
-      "
-    volumes:
-      - .:/imtz_aml_auto
-      - shared-logs:/imtz_aml_auto/log
-      - bundle-data:/usr/local/bundle
+imtz_aml-sidekiq:
+  image: abdimuna/inmtz-ipg-railsappv1:1
+  build: .
+  container_name: imtz_aml-sidekiq
+  command: >
+    sh -c "
+      ./wait-for-it.sh imtz_aml-db:5432 --timeout=60 --
+      ./wait-for-it.sh imtz_aml-redis:6379 --timeout=60 --
+      bundle exec sidekiq -C config/sidekiq.yml -e production"
+  volumes:
+    - .:/imtz_aml_auto
+    - shared-logs:/imtz_aml_auto/log
     environment:
       DATABASE_HOST: imtz_aml-db
       DATABASE_USERNAME: imtz_aml_user
