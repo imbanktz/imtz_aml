@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 gem "rails", "6.1.7.7"
-gem 'activeadmin', "~> 2.9.0"
+gem 'activeadmin', "~> 3.5.2"
 gem 'importmap-rails'
 gem 'httparty'
 gem 'fast_jsonapi'
