@@ -29,184 +29,6 @@ ActiveRecord::Schema.define(version: 2026_08_19_154525) do
     t.index ["resource_type", "resource_id"], name: "index_active_admin_comments_on_resource"
   end
 
-  create_table "asset_categories", force: :cascade do |t|
-    t.string "code"
-    t.string "name"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "asset_makes", force: :cascade do |t|
-    t.string "name"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "asset_models", force: :cascade do |t|
-    t.bigint "asset_make_id"
-    t.bigint "asset_type_id"
-    t.string "model_code", null: false
-    t.string "model_name"
-    t.integer "engine_power_hp"
-    t.integer "operating_weight_kg"
-    t.integer "fuel_tank_capacity_liters"
-    t.boolean "active", default: true
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["asset_make_id"], name: "index_asset_models_on_asset_make_id"
-    t.index ["asset_type_id"], name: "index_asset_models_on_asset_type_id"
-    t.index ["model_code"], name: "index_asset_models_on_model_code"
-  end
-
-  create_table "asset_types", force: :cascade do |t|
-    t.bigint "asset_category_id"
-    t.string "type_code", null: false
-    t.string "type_name", null: false
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.integer "typical_lifespan_hours"
-    t.boolean "active", default: true
-    t.index ["asset_category_id"], name: "index_asset_types_on_asset_category_id"
-    t.index ["type_code"], name: "index_asset_types_on_type_code", unique: true
-  end
-
-  create_table "assets", force: :cascade do |t|
-    t.string "fleet_number", null: false
-    t.string "serial_number"
-    t.bigint "asset_model_id"
-    t.string "current_status"
-    t.string "current_location_type"
-    t.integer "current_location_id"
-    t.decimal "current_hour_meter", precision: 10, scale: 1, default: "0.0"
-    t.date "last_meter_update"
-    t.date "acquisition_date"
-    t.decimal "acquisition_cost", precision: 15, scale: 2
-    t.integer "primary_operator_id"
-    t.boolean "active", default: true
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["asset_model_id"], name: "index_assets_on_asset_model_id"
-    t.index ["fleet_number"], name: "index_assets_on_fleet_number", unique: true
-    t.index ["primary_operator_id"], name: "index_assets_on_primary_operator_id"
-    t.index ["serial_number"], name: "index_assets_on_serial_number", unique: true
-  end
-
-  create_table "breakdown_reasons", force: :cascade do |t|
-    t.string "reason_code"
-    t.string "reason_name"
-    t.string "category"
-    t.text "typical_parts"
-    t.decimal "average_repair_hours"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "farm_fields", force: :cascade do |t|
-    t.bigint "farm_id", null: false
-    t.string "field_name"
-    t.string "field_code"
-    t.decimal "area_hectares"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["farm_id"], name: "index_farm_fields_on_farm_id"
-  end
-
-  create_table "farms", force: :cascade do |t|
-    t.string "farm_code"
-    t.string "farm_name"
-    t.string "farm_category"
-    t.string "region"
-    t.decimal "area_hectares"
-    t.integer "manager_id"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "hour_meter_readings", force: :cascade do |t|
-    t.bigint "asset_id"
-    t.date "reading_date"
-    t.decimal "hour_meter", precision: 10, scale: 1
-    t.bigint "recorded_by_id"
-    t.boolean "verified", default: false
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.integer "verified_by_id"
-    t.datetime "verified_at"
-    t.text "notes"
-    t.string "reading_type", default: "regular"
-    t.index ["asset_id", "reading_date"], name: "index_hour_meter_readings_on_asset_id_and_reading_date", unique: true
-    t.index ["asset_id"], name: "index_hour_meter_readings_on_asset_id"
-    t.index ["reading_date"], name: "index_hour_meter_readings_on_reading_date"
-    t.index ["recorded_by_id"], name: "index_hour_meter_readings_on_recorded_by_id"
-  end
-
-  create_table "lubricant_consumptions", force: :cascade do |t|
-    t.date "transaction_date"
-    t.bigint "asset_id"
-    t.bigint "work_order_id"
-    t.string "job_card_number"
-    t.string "lubricant_type"
-    t.decimal "quantity", precision: 10, scale: 2
-    t.string "remark"
-    t.string "reason"
-    t.bigint "recorded_by_id"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["asset_id"], name: "index_lubricant_consumptions_on_asset_id"
-    t.index ["lubricant_type"], name: "index_lubricant_consumptions_on_lubricant_type"
-    t.index ["recorded_by_id"], name: "index_lubricant_consumptions_on_recorded_by_id"
-    t.index ["transaction_date"], name: "index_lubricant_consumptions_on_transaction_date"
-    t.index ["work_order_id"], name: "index_lubricant_consumptions_on_work_order_id"
-  end
-
-  create_table "lubricants", force: :cascade do |t|
-    t.string "code"
-    t.string "name"
-    t.string "unit"
-    t.decimal "current_stock"
-    t.decimal "min_stock_level"
-    t.decimal "unit_cost"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "monthly_availabilities", force: :cascade do |t|
-    t.bigint "asset_id", null: false
-    t.date "month"
-    t.decimal "downtime_hours"
-    t.decimal "breakdown_hours"
-    t.decimal "pm_hours"
-    t.decimal "waiting_parts_hours"
-    t.text "notes"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["asset_id"], name: "index_monthly_availabilities_on_asset_id"
-  end
-
-  create_table "parts", force: :cascade do |t|
-    t.string "part_number"
-    t.string "part_name"
-    t.string "applicable_make"
-    t.string "applicable_model"
-    t.integer "minimum_stock"
-    t.integer "current_stock"
-    t.integer "reorder_level"
-    t.decimal "unit_cost"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "pm_schedules", force: :cascade do |t|
-    t.string "name"
-    t.string "equipment_category"
-    t.integer "trigger_hours"
-    t.jsonb "checklist_template"
-    t.decimal "estimated_hours"
-    t.boolean "active"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
   create_table "roles", force: :cascade do |t|
     t.string "name"
     t.string "code"
@@ -219,37 +41,42 @@ ActiveRecord::Schema.define(version: 2026_08_19_154525) do
   end
 
   create_table "transactions", force: :cascade do |t|
-    t.datetime "date"
-    t.string "request_id"
-    t.string "transaction_direction"
-    t.decimal "transaction_amount", precision: 18, scale: 2
-    t.string "transaction_currency"
-    t.date "transaction_date"
-    t.string "clearing_system_ref"
-    t.jsonb "parties", default: []
-    t.jsonb "agents", default: []
-    t.jsonb "narratives", default: {}
-    t.jsonb "forensic_data", default: {}
-    t.string "processing_type"
-    t.string "profile"
-    t.string "profile_name"
+    t.string "request_id", null: false
+    t.string "transaction_direction", default: "IN", null: false
+    t.string "transaction_type", default: "UNKNOWN"
+    t.decimal "transaction_amount", precision: 18, scale: 2, default: "0.0", null: false
+    t.string "transaction_currency", default: "TZS", null: false
+    t.date "transaction_date", null: false
+    t.string "reference"
+    t.text "narrative"
+    t.string "bank_code"
+    t.json "parties"
+    t.json "raw_data"
+    t.json "raw_fields"
+    t.text "raw_message"
+    t.string "status", default: "PENDING"
+    t.string "screening_status", default: "NOT_SCREENED"
+    t.json "screening_result"
+    t.text "screening_error"
+    t.datetime "screened_at"
+    t.text "error_message"
+    t.datetime "processed_at"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.string "rtgs_reference"
     t.text "raw_rtgs_message"
-    t.string "screening_status", default: "pending"
-    t.jsonb "screening_result", default: {}
     t.jsonb "screening_attempts", default: []
-    t.string "reference"
-    t.index ["agents"], name: "index_transactions_on_agents", using: :gin
-    t.index ["narratives"], name: "index_transactions_on_narratives", using: :gin
-    t.index ["parties"], name: "index_transactions_on_parties", using: :gin
-    t.index ["processing_type"], name: "index_transactions_on_processing_type"
-    t.index ["request_id"], name: "index_transactions_on_request_id"
+    t.index ["reference"], name: "index_transactions_on_reference"
+    t.index ["request_id"], name: "index_transactions_on_request_id", unique: true
     t.index ["rtgs_reference"], name: "index_transactions_on_rtgs_reference", unique: true, where: "(rtgs_reference IS NOT NULL)"
     t.index ["screening_status"], name: "index_transactions_on_screening_status"
-    t.index ["transaction_date", "transaction_currency"], name: "index_transactions_on_transaction_date_and_transaction_currency"
+    t.index ["status", "screening_status"], name: "index_transactions_on_status_and_screening"
+    t.index ["status"], name: "index_transactions_on_status"
+    t.index ["transaction_currency"], name: "index_transactions_on_transaction_currency"
+    t.index ["transaction_date", "transaction_direction"], name: "index_transactions_on_date_and_direction"
+    t.index ["transaction_date"], name: "index_transactions_on_transaction_date"
     t.index ["transaction_direction"], name: "index_transactions_on_transaction_direction"
+    t.index ["transaction_type"], name: "index_transactions_on_transaction_type"
   end
 
   create_table "user_roles", force: :cascade do |t|
@@ -263,23 +90,21 @@ ActiveRecord::Schema.define(version: 2026_08_19_154525) do
   end
 
   create_table "users", force: :cascade do |t|
-    t.string "employee_id"
-    t.string "name"
-    t.string "email"
-    t.string "user_type"
-    t.boolean "is_creator"
-    t.boolean "is_approver"
-    t.decimal "approval_limit"
+    t.string "employee_id", null: false
+    t.string "name", null: false
+    t.string "email", null: false
+    t.string "user_type", default: "viewer"
+    t.boolean "is_creator", default: false
+    t.boolean "is_approver", default: false
+    t.decimal "approval_limit", precision: 15, scale: 2
     t.integer "primary_workshop_id"
     t.string "pin_code"
-    t.boolean "active"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
+    t.boolean "active", default: true
     t.string "encrypted_password", default: "", null: false
     t.string "reset_password_token"
     t.datetime "reset_password_sent_at"
     t.datetime "remember_created_at"
-    t.integer "sign_in_count"
+    t.integer "sign_in_count", default: 0
     t.datetime "current_sign_in_at"
     t.datetime "last_sign_in_at"
     t.string "current_sign_in_ip"
@@ -287,102 +112,16 @@ ActiveRecord::Schema.define(version: 2026_08_19_154525) do
     t.integer "failed_attempts", default: 0, null: false
     t.string "unlock_token"
     t.datetime "locked_at"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["active"], name: "index_users_on_active"
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["employee_id"], name: "index_users_on_employee_id", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
+    t.index ["user_type"], name: "index_users_on_user_type"
   end
 
-  create_table "wo_lubricants", force: :cascade do |t|
-    t.bigint "work_order_id", null: false
-    t.bigint "lubricant_id", null: false
-    t.decimal "quantity_used"
-    t.decimal "unit_cost"
-    t.decimal "total_cost"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["lubricant_id"], name: "index_wo_lubricants_on_lubricant_id"
-    t.index ["work_order_id"], name: "index_wo_lubricants_on_work_order_id"
-  end
-
-  create_table "wo_parts", force: :cascade do |t|
-    t.bigint "work_order_id", null: false
-    t.bigint "part_id", null: false
-    t.integer "quantity_used"
-    t.decimal "unit_cost"
-    t.decimal "total_cost"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["part_id"], name: "index_wo_parts_on_part_id"
-    t.index ["work_order_id"], name: "index_wo_parts_on_work_order_id"
-  end
-
-  create_table "work_orders", force: :cascade do |t|
-    t.string "wo_number", null: false
-    t.bigint "asset_id"
-    t.string "wo_type"
-    t.string "priority"
-    t.bigint "breakdown_reason_id"
-    t.text "defect_description"
-    t.decimal "meter_at_report", precision: 10, scale: 1
-    t.decimal "meter_at_start", precision: 10, scale: 1
-    t.decimal "meter_at_completion", precision: 10, scale: 1
-    t.string "status", default: "reported"
-    t.bigint "reported_by_id"
-    t.datetime "reported_at"
-    t.integer "assigned_mechanic_id"
-    t.datetime "started_at"
-    t.datetime "completed_at"
-    t.decimal "total_cost", precision: 15, scale: 2
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["asset_id"], name: "index_work_orders_on_asset_id"
-    t.index ["assigned_mechanic_id"], name: "index_work_orders_on_assigned_mechanic_id"
-    t.index ["breakdown_reason_id"], name: "index_work_orders_on_breakdown_reason_id"
-    t.index ["reported_by_id"], name: "index_work_orders_on_reported_by_id"
-    t.index ["status"], name: "index_work_orders_on_status"
-    t.index ["wo_number"], name: "index_work_orders_on_wo_number", unique: true
-  end
-
-  create_table "workshop_sections", force: :cascade do |t|
-    t.bigint "workshop_id", null: false
-    t.string "section_code"
-    t.string "section_name"
-    t.string "section_type"
-    t.integer "capacity"
-    t.boolean "active"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["workshop_id"], name: "index_workshop_sections_on_workshop_id"
-  end
-
-  create_table "workshops", force: :cascade do |t|
-    t.string "code"
-    t.string "name"
-    t.text "address"
-    t.integer "manager_id"
-    t.boolean "active"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  add_foreign_key "asset_models", "asset_makes"
-  add_foreign_key "asset_models", "asset_types"
-  add_foreign_key "asset_types", "asset_categories"
-  add_foreign_key "assets", "asset_models"
-  add_foreign_key "farm_fields", "farms"
-  add_foreign_key "hour_meter_readings", "assets"
-  add_foreign_key "hour_meter_readings", "users", column: "recorded_by_id"
-  add_foreign_key "lubricant_consumptions", "assets"
-  add_foreign_key "lubricant_consumptions", "users", column: "recorded_by_id"
-  add_foreign_key "lubricant_consumptions", "work_orders"
-  add_foreign_key "monthly_availabilities", "assets"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
-  add_foreign_key "wo_lubricants", "lubricants"
-  add_foreign_key "wo_lubricants", "work_orders"
-  add_foreign_key "wo_parts", "parts"
-  add_foreign_key "wo_parts", "work_orders"
-  add_foreign_key "work_orders", "assets"
-  add_foreign_key "work_orders", "breakdown_reasons"
-  add_foreign_key "work_orders", "users", column: "reported_by_id"
-  add_foreign_key "workshop_sections", "workshops"
 end
