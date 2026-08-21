@@ -57,7 +57,7 @@ services:
       - shared-logs:/imtz_aml_auto/log
       # - bundle-data:/usr/local/bundle
     ports:
-      - "9991:3000"
+      - "8080:3000"
     environment:
       DATABASE_HOST: imtz_aml-db
       DATABASE_USERNAME: imtz_aml_user

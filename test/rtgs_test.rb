@@ -38,7 +38,7 @@ transaction = process_rtgs_async(sample_rtgs)
 
 # Check status
 def check_status(transaction_id)
-  response = HTTParty.get("http://localhost:9991/api/v1/rtgs/status/#{transaction_id}")
+  response = HTTParty.get("http://localhost:8080/api/v1/rtgs/status/#{transaction_id}")
   puts JSON.pretty_generate(JSON.parse(response.body))
 end
 
