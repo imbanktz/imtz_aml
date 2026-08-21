@@ -17,5 +17,5 @@ production:
     database: imtz_aml_db_prod
     username: imtz_aml_user
     password: _6xmuna7@2025
-    host: imtz_aml-db
+    host: 192.168.211.201
     port: 5432
