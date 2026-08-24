@@ -39,7 +39,7 @@ services:
       - fleet-network
 
   imtz_aml-web:
-    image: abdimuna/inmtz-ipg-railsappv1:1
+    image: abdimuna/inmtz-ipg-nginxv1:2
     build: .
     container_name: imtz_aml-web
     command: >
@@ -86,7 +86,7 @@ services:
       - fleet-network
 
   imtz_aml-sidekiq:
-    image: abdimuna/inmtz-ipg-railsappv1:1
+    image: abdimuna/inmtz-ipg-nginxv1:2
     build: .
     container_name: imtz_aml-sidekiq
     command: >
