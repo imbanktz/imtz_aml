@@ -12,7 +12,7 @@ class RtgsParserService
       transactionAmount: parse_amount(parsed),
       transactionCurrency: parsed[:currency] || 'TZS',
       transactionDate: format_date(parsed[:date]),
-      clearingSystemRef: 'TZIMBAN',
+      clearingSystemRef: TZQUE_ID,
       parties: build_parties(parsed),
       agents: build_agents(parsed),
       narratives: build_narratives(parsed),

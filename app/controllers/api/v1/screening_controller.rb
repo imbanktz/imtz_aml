@@ -33,7 +33,7 @@ class Api::V1::ScreeningController < ApplicationController
       transactionAmount: 19760000,
       transactionCurrency: "TZS",
       transactionDate: "2026-08-18",
-      clearingSystemRef: "TZIMBAN",
+      clearingSystemRef:TZQUE_ID,
       parties: [
         {
           partyId: "1333300",

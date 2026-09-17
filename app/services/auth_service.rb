@@ -59,7 +59,7 @@ class AuthService
       transactionAmount: 1000,
       transactionCurrency: "TZS",
       transactionDate: Date.current.to_s,
-      clearingSystemRef: "TZIMBAN",
+      clearingSystemRef: TZQUE_ID,
       parties: [
         {
           partyId: "TEST001",

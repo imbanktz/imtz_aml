@@ -75,7 +75,7 @@ class Api::V1::RtgsController < ApplicationController
       transaction_amount: parsed_data[:transactionAmount].to_d / 100.0,
       transaction_currency: parsed_data[:transactionCurrency],
       transaction_date: parsed_data[:transactionDate],
-      clearing_system_ref: parsed_data[:clearingSystemRef],
+      clearing_system_ref: TZQUE_ID,
       parties: parsed_data[:parties],
       agents: parsed_data[:agents],
       narratives: parsed_data[:narratives],

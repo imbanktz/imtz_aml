@@ -11,4 +11,6 @@ AMLOCK_USER_NAME = ENV['AMLOCK_USER_NAME'] || 'amladm'
 AMLOCK_PASSWORD = ENV['AMLOCK_PASSWORD'] || '123qweASD!@#'
 AMLOCK_SOURCE_FILES = ENV['AMLOCK_SOURCE_FILES'] || '/amlock/Tanzania/RMS/mxt_to_mt/rtgs_source_only'
 
+TZQUE_ID = "TZIMBAN"
+
 # #### PROD 

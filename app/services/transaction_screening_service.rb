@@ -91,7 +91,7 @@ class TransactionScreeningService
       transactionAmount: (transaction.transaction_amount * 100).to_i,
       transactionCurrency: transaction.transaction_currency,
       transactionDate: transaction.transaction_date.to_s,
-      clearingSystemRef: transaction.clearing_system_ref || 'TZIMBAN',
+      clearingSystemRef: TZQUE_ID,
       parties: transaction.parties,
       agents: transaction.agents,
       narratives: transaction.narratives,

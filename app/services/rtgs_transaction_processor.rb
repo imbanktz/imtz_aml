@@ -44,7 +44,7 @@ class RtgsTransactionProcessor
       transaction_amount: parsed_data[:transactionAmount].to_d / 100.0, # Convert from cents
       transaction_currency: parsed_data[:transactionCurrency],
       transaction_date: parsed_data[:transactionDate],
-      clearing_system_ref: parsed_data[:clearingSystemRef],
+      clearing_system_ref: TZQUE_ID,
       parties: parsed_data[:parties],
       agents: parsed_data[:agents],
       narratives: parsed_data[:narratives],
