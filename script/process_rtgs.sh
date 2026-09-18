@@ -59,6 +59,7 @@ YESTERDAY_YYYY_MM_DD=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +
 
 # Base paths
 BASE_PATH="/amlock/Tanzania/RMS"
+TZ_TXN_QUEUE_NAME="TZIMBAN"
 
 # Build paths with dynamic dates
 # You can override these with environment variables
@@ -330,7 +331,7 @@ process_from_remote() {
             transaction.screening_status = 'pending'
             
             # Store source type for tracking
-            transaction.clearing_system_ref = source_type
+            transaction.clearing_system_ref = 'TZIMBAN'
             
             if Transaction.column_names.include?('narrative') && parsed['narrative'].present?
                 transaction.narrative = parsed['narrative']
@@ -524,7 +525,7 @@ process_from_source() {
             transaction.parties = parsed['parties']
             transaction.raw_rtgs_message = content
             transaction.screening_status = 'pending'
-            transaction.clearing_system_ref = '$source_type'
+            transaction.clearing_system_ref = 'TZIMBAN'
             
             if Transaction.column_names.include?('narrative') && parsed['narrative'].present?
                 transaction.narrative = parsed['narrative']
@@ -575,7 +576,7 @@ check_status() {
             status = t.screening_status
             result = t.screening_result.is_a?(Hash) ? t.screening_result['result'] || t.screening_result : t.screening_result
             check_result = result.is_a?(Hash) ? result['checkResult'] : 'N/A'
-            source = t.clearing_system_ref || 'Unknown'
+            source = t.clearing_system_ref || 'TZIMBAN'
             puts \"  #\#{t.id}: \#{t.rtgs_reference} - \#{t.transaction_amount} \#{t.transaction_currency} - \#{status} - Source: \#{source}\"
         end
         
