@@ -84,22 +84,52 @@ class TransactionScreeningService
     )
   end
 
+  # def build_payload_from_transaction(transaction)
+  #   {
+  #     requestId: transaction.request_id,
+  #     transactionDirection: transaction.transaction_direction,
+  #     transactionAmount: (transaction.transaction_amount * 100).to_i,
+  #     transactionCurrency: transaction.transaction_currency,
+  #     transactionDate: transaction.transaction_date.to_s,
+  #     clearingSystemRef: TZQUE_ID,
+  #     parties: transaction.parties,
+  #     agents: transaction.agents,
+  #     narratives: transaction.narratives,
+  #     forensicData: transaction.forensic_data || {},
+  #     processingType: transaction.processing_type || 'CHECK',
+  #     profile: transaction.profile || 'Tanzania',
+  #     profileName: transaction.profile_name || 'Tanzania'
+  #   }
+  # end
+
   def build_payload_from_transaction(transaction)
     {
       requestId: transaction.request_id,
-      transactionDirection: transaction.transaction_direction,
-      transactionAmount: (transaction.transaction_amount * 100).to_i,
+      transactionDirection: transaction.transaction_direction.to_s.downcase,
+      transactionAmount: (transaction.transaction_amount.to_f * 100).round,
       transactionCurrency: transaction.transaction_currency,
       transactionDate: transaction.transaction_date.to_s,
-      clearingSystemRef: TZQUE_ID,
-      parties: transaction.parties,
-      agents: transaction.agents,
-      narratives: transaction.narratives,
+      clearingSystemRef: transaction.clearing_system_ref.presence || 'TZIMBAN',
+      parties: transaction.parties || [],
+      agents: transaction.agents || [],
+      narratives: build_narratives(transaction),
       forensicData: transaction.forensic_data || {},
       processingType: transaction.processing_type || 'CHECK',
       profile: transaction.profile || 'Tanzania',
       profileName: transaction.profile_name || 'Tanzania'
     }
+  end
+
+  def build_narratives(transaction)
+    # Use the singular narrative column that the parser already writes
+    if transaction.respond_to?(:narrative) && transaction.narrative.present?
+      return { 'remittanceInfo' => transaction.narrative }
+    end
+    # Fallback: if a `narratives` column exists in some environments
+    if transaction.respond_to?(:narratives) && transaction.narratives.present?
+      return transaction.narratives
+    end
+    {}
   end
 
   def log_screening_request(payload)
