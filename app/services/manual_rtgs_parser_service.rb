@@ -1,4 +1,3 @@
-# app/services/manual_rtgs_parser_service.rb
 class ManualRtgsParserService
   attr_reader :content, :parsed_data
 
@@ -69,9 +68,15 @@ class ManualRtgsParserService
       }
     end
 
-    # Narrative (field 70)
-    if @content =~ /:70:([^\n]+)/
-      @parsed_data['narrative'] = $1.strip
+    # Narrative (field 70) — capture MULTILINE up to the next :NN: field or -}
+    if (m = @content.match(/:70:(.*?)(?=\r?\n:\d{2}[A-Z]?:|\r?\n-}|\z)/m))
+      @parsed_data['narrative'] = m[1]
+                                    .gsub(/\r\n?/, "\n")
+                                    .lines
+                                    .map(&:strip)
+                                    .reject(&:empty?)
+                                    .join(' ')
+                                    .strip
     end
 
     # Bank code (field 57A or from header)
@@ -116,6 +121,8 @@ class ManualRtgsParserService
   end
 
   def build_result
+    remittance = @parsed_data['narrative'].presence || 'RTGS Transaction'
+
     {
       'requestId' => "IMTZTRX#{Time.current.strftime('%Y%m%d%H%M%S')}#{SecureRandom.hex(6).upcase}",
       'reference' => @parsed_data['reference'],
@@ -127,6 +134,10 @@ class ManualRtgsParserService
       'narrative' => @parsed_data['narrative'],
       'bankCode' => @parsed_data['bankCode'],
       'parties' => @parsed_data['parties'] || [],
+      # used only in the screening payload — not persisted
+      'narratives' => {
+        'remittanceInfo' => remittance
+      },
       'rawFields' => {
         '20' => @parsed_data['reference'],
         '23B' => @parsed_data['transactionType'],
