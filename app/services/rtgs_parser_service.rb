@@ -266,8 +266,7 @@ class RtgsParserService
     remittance_info = parsed[:narrative].presence || 'RTGS Transaction'
 
     {
-      remittanceInfo: remittance_info,
-      all:            [remittance_info]
+      remittanceInfo: remittance_info
     }
   end
 end
